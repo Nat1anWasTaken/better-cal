@@ -235,7 +235,7 @@ async fn register(State(st): State<AppState>, headers: HeaderMap, body: Bytes) -
     if endpoints(&st).is_none() {
         return disabled();
     }
-    if !st.limiter.check(&format!("oauth-register:{}", client_ip(&headers)), 30, Duration::from_secs(3600)).await {
+    if !st.limiter.check(&format!("oauth-register:{}", client_ip(&st.cfg, &headers)), 30, Duration::from_secs(3600)).await {
         return OAuthError::new(StatusCode::TOO_MANY_REQUESTS, "slow_down", "too many registrations from this address").into_response();
     }
     match register_inner(&st, &body).await {

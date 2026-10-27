@@ -11,6 +11,7 @@ use uuid::Uuid;
 use super::TAG_AUTH;
 use crate::auth::principal::Role;
 use crate::auth::{Principal, SESSION_COOKIE, password, tokens};
+use crate::config::Config;
 use crate::error::{ApiError, ApiResult, JsonBody};
 use crate::preferences::UserPreferences;
 use crate::state::AppState;
@@ -72,11 +73,18 @@ fn session_cookie(st: &AppState, token: &str, max_age: i64) -> HeaderValue {
     HeaderValue::from_str(&format!("{SESSION_COOKIE}={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={max_age}{secure}")).unwrap()
 }
 
-/// Client address as reported by the reverse proxy (first X-Forwarded-For hop).
+/// Client address as reported by the reverse proxy, for rate-limit keys.
+/// Only proxy-written values are used: `CLIENT_IP_HEADER` when configured,
+/// otherwise the last `X-Forwarded-For` hop (earlier hops are client-supplied).
 /// A whole classroom behind one NAT shares this key, so the per-address limit
 /// is generous; the per-account limit is what slows down password guessing.
-pub(crate) fn client_ip(headers: &HeaderMap) -> String {
-    headers.get("x-forwarded-for").and_then(|v| v.to_str().ok()).and_then(|v| v.split(',').next()).unwrap_or("direct").trim().to_string()
+pub(crate) fn client_ip(cfg: &Config, headers: &HeaderMap) -> String {
+    let value = |name: &str| headers.get(name).and_then(|v| v.to_str().ok());
+    let ip = match &cfg.client_ip_header {
+        Some(h) => value(h),
+        None => value("x-forwarded-for").and_then(|v| v.rsplit(',').next()),
+    };
+    ip.map(str::trim).filter(|v| !v.is_empty()).unwrap_or("direct").to_string()
 }
 
 /// Log in with username and password; sets an HttpOnly session cookie.
@@ -84,9 +92,13 @@ pub(crate) fn client_ip(headers: &HeaderMap) -> String {
     responses((status = 200, body = Me), (status = 401, body = crate::error::ProblemDetails), (status = 429, body = crate::error::ProblemDetails)))]
 async fn login(State(st): State<AppState>, headers: HeaderMap, JsonBody(req): JsonBody<LoginRequest>) -> ApiResult<Response> {
     let uname = req.username.trim().to_lowercase();
-    let ip = client_ip(&headers);
+    let ip = client_ip(&st.cfg, &headers);
     let window = std::time::Duration::from_secs(300);
-    if !st.limiter.check(&format!("login:{ip}:{uname}"), 10, window).await || !st.limiter.check(&format!("login-ip:{ip}"), 300, window).await {
+    // The account-wide limit holds even when guesses come from many addresses.
+    if !st.limiter.check(&format!("login:{ip}:{uname}"), 10, window).await
+        || !st.limiter.check(&format!("login-user:{uname}"), 30, window).await
+        || !st.limiter.check(&format!("login-ip:{ip}"), 300, window).await
+    {
         return Err(ApiError::too_many("登入嘗試次數過多，請 5 分鐘後再試"));
     }
     let user: Option<UserRow> = sqlx::query_as(

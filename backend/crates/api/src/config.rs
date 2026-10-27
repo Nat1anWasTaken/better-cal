@@ -21,6 +21,9 @@ pub struct Config {
     /// Canonical external origin (e.g. `https://cal.example.edu`). Required for
     /// MCP: it is the OAuth issuer and `{public_url}/mcp` is the protected resource.
     pub public_url: Option<String>,
+    /// Header carrying the client address, set by the reverse proxy in front of
+    /// the app (e.g. `cf-connecting-ip`). Unset: the last `X-Forwarded-For` hop.
+    pub client_ip_header: Option<String>,
 }
 
 fn env(key: &str) -> Option<String> {
@@ -44,6 +47,7 @@ impl Config {
             runner_timeout: Duration::from_secs(env("RUNNER_TIMEOUT_S").and_then(|v| v.parse().ok()).unwrap_or(90)),
             max_attempts: env("JUDGE_MAX_ATTEMPTS").and_then(|v| v.parse().ok()).unwrap_or(3),
             public_url: env("PUBLIC_URL").map(|v| v.trim().trim_end_matches('/').to_string()),
+            client_ip_header: env("CLIENT_IP_HEADER").map(|v| v.trim().to_ascii_lowercase()),
         })
     }
 }

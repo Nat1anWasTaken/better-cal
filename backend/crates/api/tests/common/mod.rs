@@ -66,6 +66,7 @@ pub async fn app() -> TestApp {
         runner_timeout: std::time::Duration::from_secs(60),
         max_attempts: 2,
         public_url: Some("http://app.test".into()),
+        client_ip_header: None,
     };
     let state = ccal_api::init_state(cfg).await.unwrap();
     ccal_api::judge::worker::spawn_workers(&state);
