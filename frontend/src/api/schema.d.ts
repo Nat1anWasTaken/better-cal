@@ -545,6 +545,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/rounds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every leaderboard round, newest first. */
+        get: operations["list_rounds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/rounds/{id}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * End a round. Submits after this no longer count; a frozen board stays
+         *     frozen until revealed.
+         */
+        post: operations["end_round"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/rounds/{id}/freeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Freeze the board: students see results only up to now. */
+        post: operations["freeze_round"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/rounds/{id}/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reveal a frozen board to students. */
+        post: operations["reveal_round"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/settings": {
         parameters: {
             query?: never;
@@ -577,6 +648,7 @@ export interface paths {
         /**
          * Make a published set the site's active (default) set. Takes effect
          *     immediately; open editors are told about the switch and keep their code.
+         *     With `start_round`, the open leaderboard round ends and a new one starts.
          */
         put: operations["set_active"];
         post?: never;
@@ -909,6 +981,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/leaderboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ranking of the round in progress. */
+        get: operations["current_leaderboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/drafts/{problem_id}": {
         parameters: {
             query?: never;
@@ -1007,6 +1096,40 @@ export interface paths {
          *     Hidden tests and the reference solution are never included.
          */
         get: operations["get_problem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rounds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rounds you can view, newest first. */
+        get: operations["list_rounds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rounds/{id}/leaderboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ranking of one round, open or ended. */
+        get: operations["round_leaderboard"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1135,11 +1258,17 @@ export interface components {
             active_set_id: string;
             /** Format: int64 */
             config_version: number;
+            /**
+             * Format: uuid
+             * @description The round started by this request, if any.
+             */
+            round_id?: string | null;
             slug: string;
         };
         ActiveSetInput: {
             /** @description Id or slug of a published set. */
             problem_set: string;
+            start_round?: components["schemas"]["StartRound"] | null;
         };
         AdminSet: {
             /** @description This set is the site's active (default) set. */
@@ -1206,6 +1335,12 @@ export interface components {
             target: string;
             via_token?: string | null;
         };
+        Badge: {
+            /** @description `first_solve` or `no_hints`; more kinds may be added. */
+            kind: string;
+            /** Format: uuid */
+            problem_id: string;
+        };
         BatchCreate: {
             /** Format: uuid */
             cohort_id?: string | null;
@@ -1218,6 +1353,16 @@ export interface components {
             created: components["schemas"]["CreatedUser"][];
             errors: components["schemas"]["FieldError"][];
             ok: boolean;
+        };
+        BoardProblem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            position: number;
+            title: string;
+        };
+        BoardRow: components["schemas"]["Standing"] & {
+            name: string;
         };
         CardView: {
             cascade_note?: string | null;
@@ -1257,6 +1402,27 @@ export interface components {
             texts_have_draft: boolean;
             /** Format: int64 */
             version: number;
+        };
+        Cell: {
+            /**
+             * Format: int64
+             * @description Minutes from the round start to the first accept.
+             */
+            minutes?: number | null;
+            /**
+             * Format: int32
+             * @description Submits made after the freeze whose results are hidden.
+             */
+            pending: number;
+            /** Format: uuid */
+            problem_id: string;
+            solved: boolean;
+            /**
+             * Format: int32
+             * @description Wrong submits (compile errors excluded) before the first accept, or
+             *     in total when unsolved.
+             */
+            wrong_tries: number;
         };
         ChangePasswordRequest: {
             current_password: string;
@@ -1405,6 +1571,7 @@ export interface components {
             auto_reveal_hints: components["schemas"]["Sourced_u8"];
             default_set_id: components["schemas"]["Sourced_Option_String"];
             extra_set_ids: string[];
+            leaderboard: components["schemas"]["Sourced_bool"];
             /** @description Union of site, cohort and student concepts (problem/set concepts are added per request). */
             learned_concepts: string[];
             max_hint_levels: components["schemas"]["Sourced_Option_u8"];
@@ -1493,6 +1660,19 @@ export interface components {
         };
         /** @enum {string} */
         JudgeHealth: "ok" | "down" | "unknown";
+        Leaderboard: {
+            /** @description Results after `round.frozen_at` are hidden from this viewer. */
+            frozen: boolean;
+            /**
+             * Format: int64
+             * @description Minutes added per wrong try.
+             */
+            penalty_per_wrong: number;
+            problems: components["schemas"]["BoardProblem"][];
+            round: components["schemas"]["Round"];
+            /** @description Only students who submitted during the round, best first. */
+            rows: components["schemas"]["BoardRow"][];
+        };
         LoginRequest: {
             password: string;
             username: string;
@@ -1663,6 +1843,8 @@ export interface components {
             default_set_id?: string | null;
             /** @description Additional sets (including unlisted ones) visible at this level. */
             extra_set_ids?: string[] | null;
+            /** @description Show the leaderboard and list this student on it. */
+            leaderboard?: boolean | null;
             /** @description Concepts added at this level (union with other levels). */
             learned_concepts?: string[] | null;
             /**
@@ -1894,6 +2076,27 @@ export interface components {
         };
         /** @enum {string} */
         Role: "student" | "owner";
+        Round: {
+            /**
+             * Format: date-time
+             * @description `None` while the round is open.
+             */
+            ended_at?: string | null;
+            /**
+             * Format: date-time
+             * @description While set, students see the board as of this moment.
+             */
+            frozen_at?: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            set_id: string;
+            set_slug: string;
+            set_title: string;
+            /** Format: date-time */
+            started_at: string;
+            title: string;
+        };
         RuleEditor: {
             /** @description Wording shipped with the system. */
             builtin?: Record<string, never> | null;
@@ -2042,6 +2245,13 @@ export interface components {
              * @description The set this user should land on (cohort/student settings may differ).
              */
             default_set_id?: string | null;
+            /** @description This user may view leaderboards. */
+            leaderboard: boolean;
+            /**
+             * Format: uuid
+             * @description The leaderboard round in progress, if any.
+             */
+            open_round_id?: string | null;
             site_name: string;
         };
         SiteSettings: {
@@ -2065,6 +2275,7 @@ export interface components {
              * @description Site-level policy (lowest precedence; cohorts and students override it).
              * @default {
              *       "auto_reveal_hints": 0,
+             *       "leaderboard": true,
              *       "learned_concepts": [
              *         "io",
              *         "variables"
@@ -2105,6 +2316,28 @@ export interface components {
             source: components["schemas"]["Source"];
             /** Format: int32 */
             value: number;
+        };
+        Standing: {
+            badges: components["schemas"]["Badge"][];
+            cells: components["schemas"]["Cell"][];
+            /**
+             * Format: int64
+             * @description Minutes: time to each accept plus `PENALTY_PER_WRONG` per wrong try.
+             */
+            penalty: number;
+            /**
+             * Format: int32
+             * @description 1-based; rows tied on solved, penalty and last accept share a rank.
+             */
+            rank: number;
+            /** Format: int32 */
+            solved: number;
+            /** Format: uuid */
+            user_id: string;
+        };
+        StartRound: {
+            /** @description Defaults to the set's title. */
+            title?: string | null;
         };
         /** @enum {string} */
         SubmissionKind: "run" | "submit";
@@ -3483,6 +3716,104 @@ export interface operations {
             };
         };
     };
+    list_rounds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Round"][];
+                };
+            };
+        };
+    };
+    end_round: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Round"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    freeze_round: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Round"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    reveal_round: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Round"];
+                };
+            };
+        };
+    };
     get_settings: {
         parameters: {
             query?: never;
@@ -4135,6 +4466,33 @@ export interface operations {
             };
         };
     };
+    current_leaderboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Leaderboard"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     get_draft: {
         parameters: {
             query?: never;
@@ -4308,6 +4666,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProblemView"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    list_rounds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Round"][];
+                };
+            };
+        };
+    };
+    round_leaderboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Leaderboard"];
                 };
             };
             404: {

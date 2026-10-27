@@ -88,6 +88,7 @@ export function Brand() {
 
 /** Header + outlet for student pages. `fullHeight` pages (the workspace) manage their own scrolling. */
 export function AppShell() {
+  const site = useSite()
   return (
     <div className="flex min-h-dvh flex-col">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-card focus:px-3 focus:py-2">
@@ -106,6 +107,11 @@ export function AppShell() {
             <NavLink to="/me/progress" className={navClass}>
               進度
             </NavLink>
+            {site.data?.leaderboard && (
+              <NavLink to="/leaderboard" className={navClass}>
+                排行榜
+              </NavLink>
+            )}
           </nav>
           <div className="ml-auto">
             <UserMenu />

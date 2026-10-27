@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
-import { Puzzle } from 'lucide-react'
+import { Puzzle, Trophy } from 'lucide-react'
 import { Link, useParams } from 'react-router'
 
 import { api } from '@/api/client'
-import type { SetDetail } from '@/api/types'
+import type { Leaderboard, SetDetail } from '@/api/types'
 import { Markdown } from '@/components/Markdown'
 import { Empty, ErrorState, Loading, Page, PageHeader } from '@/components/Page'
 import { StatusPill } from '@/components/StatusPill'
+import { useAuth } from '@/hooks/auth'
 import { useSite } from '@/hooks/useSite'
 import { PROGRESS } from '@/lib/format'
 
@@ -34,6 +35,7 @@ export function SetPage() {
         description={s.description_md ? <Markdown>{s.description_md}</Markdown> : undefined}
       />
       {site.data?.active_set_id === s.id && <p className="-mt-3 mb-5 text-sm text-primary">這是讀書會目前進行中的題目集。</p>}
+      <MyRank setId={s.id} roundId={site.data?.open_round_id} />
       {s.problems.length === 0 ? (
         <Empty>這個題目集還沒有題目。</Empty>
       ) : (
@@ -61,5 +63,20 @@ export function SetPage() {
         </ol>
       )}
     </Page>
+  )
+}
+
+/** "You're #N this round" when this set is the open round's set. */
+function MyRank({ setId, roundId }: { setId: string; roundId?: string | null }) {
+  const { me } = useAuth()
+  const q = useQuery({ queryKey: ['leaderboard', '__current__'], queryFn: () => api.get<Leaderboard>('/leaderboard'), enabled: !!roundId, retry: false })
+  if (!roundId || !q.data || q.data.round.set_id !== setId) return null
+  const row = q.data.rows.find((r) => r.user_id === me?.user.id)
+  return (
+    <Link to="/leaderboard" className="-mt-3 mb-5 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+      <Trophy aria-hidden className="size-4 text-warning" />
+      {row ? `本輪排行：第 ${row.rank} 名（共 ${q.data.rows.length} 人）` : '本輪排行進行中，送出提交就會上榜'}
+      {q.data.frozen && '（已凍結）'}
+    </Link>
   )
 }
