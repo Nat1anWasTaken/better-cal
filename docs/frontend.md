@@ -28,19 +28,21 @@ Their exact shapes live in `src/api/types.ts`.
 src/
   api/          client.ts (fetch wrapper: cookies, X-CSRF-Token, problem+json → ApiError), types.ts, schema.d.ts
   lib/          pure helpers with unit tests: fillin (blank ranges), diff (visible whitespace),
-                autosave (draft state machine), errors (JSON Pointer mapping), cards (grouping), format
+                autosave (draft state machine), errors (JSON Pointer mapping), cards (grouping), format,
+                preferences (defaults, Monaco theme/options mapping)
   hooks/        auth context, useDraft (autosave + localStorage backup + 409 conflicts),
-                useSubmission (polling with backoff, 90 s give-up), useSite (30 s poll), useUnsavedGuard
-  components/   CodeEditor (Monaco), FeedbackCard / CardList, SubmissionResult, TestResults,
+                useSubmission (polling with backoff, 90 s give-up), useSite (30 s poll), useUnsavedGuard,
+                usePreferences (saved editor preferences), useIsDark
+  components/   CodeEditor (Monaco), EditorPreferencesFields / EditorPreferencesPopover, FeedbackCard / CardList, SubmissionResult, TestResults,
                 Markdown (react-markdown + rehype-sanitize, raw HTML skipped), StatusPill, AppShell
   components/admin/  form helpers, PolicyEditor, PreviewPanel, StringList
-  pages/        Login, Account (incl. forced password change), Home, SetPage, ProblemPage,
+  pages/        Login, Account (incl. forced password change), Preferences (/settings), Home, SetPage, ProblemPage,
                 MySubmissions (+ detail), MyProgress
   pages/admin/  Overview, Problems, ProblemEditor, Sets, SetEditor, ImportExport, Catalog, RuleEditor,
                 CatalogTexts, CustomRule, RuleStats, Students, StudentDetail, Cohorts, ProgressMatrix,
                 Submissions, Settings, Tokens, Audit
 e2e/            Playwright: auth setup (one login per role), student flow, fill-in, autosave/reload,
-                active-set switch banner, teaching-text edit → preview → publish → restore
+                active-set switch banner, teaching-text edit → preview → publish → restore, preferences + Vim
 ```
 
 The admin dashboard, the problem workspace and the history pages are lazy-loaded chunks, so the login
@@ -66,6 +68,16 @@ and set pages do not download Monaco.
   - Below 1024 px: tabs (題目 / 程式 / 結果). The editor tab stays mounted and the document survives layout switches.
   - Ctrl+Enter runs and Ctrl+Shift+Enter submits.
   - "Jump to location" scrolls to the reported line, highlights it and focuses the editor.
+- **Editor preferences.**
+  - Each user's editor theme, Vim mode, font size, tab width, word wrap, line numbers and minimap are
+    stored on the server (`PUT /auth/preferences`, returned in `/auth/me`), so they follow students
+    across lab machines. The site light/dark theme is still per browser.
+  - Edited on `/settings` (偏好設定, from the account menu) with a live, editable preview, or from the
+    gear button in the problem toolbar, which saves each change immediately.
+  - `editor_theme: auto` follows the site theme by watching the `dark` class on `<html>`.
+  - Vim mode uses `monaco-vim`, loaded on demand, with a mode line under the editor. It imports the old
+    `monaco-editor/esm/vs/...` paths, which `vite.config.ts` aliases onto the same modules as
+    `src/lib/monaco.ts`, so there is still one Monaco instance.
 - **Fill-in problems.**
   - Template segments become editable ranges.
   - Edits outside the blanks are undone as soon as Monaco applies them, and the fixed text is dimmed.
@@ -139,3 +151,6 @@ arbitrary colours (`text-[#…]`) are errors outside `src/components/ui/`.
   4. Switching the active set (via the owner API) shows the banner while the code is kept.
   5. An owner edits a rule title, previews it with the real compiler, publishes, then restores
      the built-in wording and publishes again.
+  6. A student turns on Vim mode and a high-contrast theme on `/settings`; the problem editor uses them,
+     Ctrl+Enter still runs, the choice survives a reload, and the toolbar popover turns Vim off again.
+     Vim commands (`dd`, `x`, `A`) cannot change the fixed code of a fill-in problem.

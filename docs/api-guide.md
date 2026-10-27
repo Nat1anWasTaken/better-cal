@@ -38,6 +38,8 @@ Authorization: Bearer ccal_xxxxxxxxxxxxxxxx
 
 `POST /auth/login` 會設定 HttpOnly cookie，並回傳 `csrf_token`。之後所有非 GET 的請求都必須帶 `X-CSRF-Token` 標頭。若有設定 `PUBLIC_ORIGINS`，`Origin` 也必須在允許清單中。
 
+每個使用者的偏好設定（編輯器配色、Vim 模式、字體大小、縮排寬度、自動換行、行號、minimap）放在 `GET /auth/me` 的 `user.preferences`，用 `PUT /auth/preferences` 整份取代；沒有給的欄位會用預設值。API token 不能修改偏好設定。
+
 ## 2. 共通慣例
 
 - **識別碼**：資源以 UUID 為主鍵。題目與題目集另有不可修改的 `slug`，路徑參數兩者皆可用，例如 `/admin/problems/a-plus-b`。
