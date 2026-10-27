@@ -1,10 +1,11 @@
 //! Pure domain logic shared by the API server: fill-in templates, output
-//! comparison, the JSON import format, problem validation and the effective
-//! policy merge. Nothing here performs I/O.
+//! comparison, the JSON import format, problem validation, the effective
+//! policy merge and leaderboard scoring. Nothing here performs I/O.
 
 pub mod compare;
 pub mod fillin;
 pub mod import;
+pub mod leaderboard;
 pub mod policy;
 pub mod problem;
 

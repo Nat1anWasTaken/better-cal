@@ -37,6 +37,9 @@ pub struct PolicyPatch {
     pub runs_per_minute: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub submits_per_minute: Option<u32>,
+    /// Show the leaderboard and list this student on it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub leaderboard: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
@@ -65,6 +68,7 @@ pub struct EffectivePolicy {
     pub raw_expanded: Sourced<bool>,
     pub runs_per_minute: Sourced<u32>,
     pub submits_per_minute: Sourced<u32>,
+    pub leaderboard: Sourced<bool>,
 }
 
 /// System-wide hard caps that online settings cannot exceed.
@@ -124,6 +128,7 @@ pub fn effective(site: &PolicyPatch, cohort: Option<&PolicyPatch>, student: Opti
         runs_per_minute: pick(site.runs_per_minute.or(d.runs_per_minute).unwrap_or(10), c.runs_per_minute, s.runs_per_minute).clamp_value(MAX_RUNS_PER_MINUTE),
         submits_per_minute: pick(site.submits_per_minute.or(d.submits_per_minute).unwrap_or(5), c.submits_per_minute, s.submits_per_minute)
             .clamp_value(MAX_SUBMITS_PER_MINUTE),
+        leaderboard: pick(site.leaderboard.or(d.leaderboard).unwrap_or(true), c.leaderboard, s.leaderboard),
     }
 }
 
@@ -145,6 +150,7 @@ pub fn site_defaults() -> PolicyPatch {
         raw_expanded: Some(false),
         runs_per_minute: Some(10),
         submits_per_minute: Some(5),
+        leaderboard: Some(true),
     }
 }
 
@@ -177,6 +183,11 @@ mod tests {
         assert_eq!(e.auto_reveal_hints, Sourced { value: 1, source: Source::Cohort });
         let e = effective(&site, None, None, None);
         assert_eq!(e.auto_reveal_hints.source, Source::Site);
+        assert_eq!(e.leaderboard, Sourced { value: true, source: Source::Site });
+        let off = PolicyPatch { leaderboard: Some(false), ..Default::default() };
+        assert!(!effective(&site, Some(&off), None, None).leaderboard.value);
+        let on = PolicyPatch { leaderboard: Some(true), ..Default::default() };
+        assert_eq!(effective(&site, Some(&off), Some(&on), None).leaderboard, Sourced { value: true, source: Source::Student });
     }
 
     #[test]
