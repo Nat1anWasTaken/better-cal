@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 
 import { api } from '@/api/client'
 import type { ProblemView, SetDetail, Span, SubmissionView } from '@/api/types'
-import { CodeEditor, type CodeEditorHandle, type EditorDiagnostic } from '@/components/CodeEditor'
+import { CodeEditor, type CodeEditorHandle } from '@/components/CodeEditor'
 import { EditorPreferencesPopover } from '@/components/EditorPreferencesPopover'
 import { Markdown } from '@/components/Markdown'
 import { ErrorState, Loading, Page } from '@/components/Page'
@@ -32,6 +32,7 @@ import { useDraft } from '@/hooks/useDraft'
 import { useSite } from '@/hooks/useSite'
 import { useMediaQuery, useSubmission } from '@/hooks/useSubmission'
 import { saveLabel } from '@/lib/autosave'
+import { cardsToDiagnostics } from '@/lib/cards'
 import { errorMessage } from '@/lib/errors'
 import { buildDoc } from '@/lib/fillin'
 import { cn } from '@/lib/utils'
@@ -176,20 +177,7 @@ export function ProblemPage() {
     [desktop],
   )
 
-  const diagnostics: EditorDiagnostic[] = useMemo(
-    () =>
-      (submission?.cards ?? [])
-        .filter((c) => c.span && c.maybe_cascade_of == null)
-        .map((c) => ({
-          line: c.span!.line,
-          column: c.span!.column,
-          endLine: c.span!.end_line,
-          endColumn: c.span!.end_column,
-          severity: c.severity === 'error' ? 'error' : c.severity === 'warning' ? 'warning' : 'info',
-          message: c.title.replace(/`/g, ''),
-        })),
-    [submission],
-  )
+  const diagnostics = useMemo(() => cardsToDiagnostics(submission?.cards ?? []), [submission])
 
   const resolveConflict = (keepMine: boolean) => {
     const c = draft.resolve(keepMine)

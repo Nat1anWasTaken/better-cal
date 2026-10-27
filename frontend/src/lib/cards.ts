@@ -1,4 +1,5 @@
 import type { FeedbackCard } from '@/api/types'
+import type { EditorDiagnostic } from '@/components/CodeEditor'
 
 export interface CardGroups {
   primary: FeedbackCard | null
@@ -38,4 +39,18 @@ export function confidenceTone(c: FeedbackCard): ConfidenceTone {
   if (c.confidence === 'confirmed') return 'confirmed'
   if (c.confidence === 'likely') return 'likely'
   return 'guess'
+}
+
+/** Editor squiggles for cards that point at code (knock-on errors are left out). */
+export function cardsToDiagnostics(cards: FeedbackCard[]): EditorDiagnostic[] {
+  return cards
+    .filter((c) => c.span && c.maybe_cascade_of == null)
+    .map((c) => ({
+      line: c.span!.line,
+      column: c.span!.column,
+      endLine: c.span!.end_line,
+      endColumn: c.span!.end_column,
+      severity: c.severity === 'error' ? 'error' : c.severity === 'warning' ? 'warning' : 'info',
+      message: c.title.replace(/`/g, ''),
+    }))
 }

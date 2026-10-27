@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { ApiError, api } from '@/api/client'
 import type { RuleEditorView, RuleEntry, RuleVariant } from '@/api/types'
 import { ConceptPicker, Field, SectionCard } from '@/components/admin/Field'
-import { PreviewPanel, SAMPLES } from '@/components/admin/PreviewPanel'
+import { PreviewPanel } from '@/components/admin/PreviewPanel'
 import { StringList } from '@/components/admin/StringList'
 import { ErrorState, Loading, Page, PageHeader } from '@/components/Page'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useUnsavedGuard } from '@/hooks/useUnsaved'
 import { errorMessage, errorsByPointer } from '@/lib/errors'
 import { templatePreview } from '@/lib/format'
+import { SAMPLES } from '@/lib/samples'
 
 const TEXT_FIELDS: Array<{ key: 'title' | 'what' | 'cause' | 'where' | 'why'; label: string; hint: string; rows: number }> = [
   { key: 'title', label: '標題', hint: '卡片最上方的一句話', rows: 1 },
