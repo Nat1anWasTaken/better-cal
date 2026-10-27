@@ -56,7 +56,7 @@ docker compose exec runner isolate --version
 
 ## 更新工具鏈
 
-1. 修改 `deploy/Dockerfile.runner` 中固定的套件版本（或 isolate tag）。
+1. 修改 `deploy/Dockerfile`（target `runner`） 中固定的套件版本（或 isolate tag）。
 2. 重新建置 runner 映像：`BUILDX_BUILDER=ccal-capped docker compose build runner`。
 3. 用新的編譯器重新產生診斷 fixtures：`scripts/gen-fixtures.sh`。
 4. 執行 `cargo test -p diagnostics`，確認每一條規則仍然對得上新的訊息，再更新本文件。

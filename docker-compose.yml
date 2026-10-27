@@ -24,7 +24,8 @@ services:
   runner:
     build:
       context: .
-      dockerfile: deploy/Dockerfile.runner
+      dockerfile: deploy/Dockerfile
+      target: runner
     image: cyculcal-runner:${CYCULCAL_VERSION:-local}
     restart: unless-stopped
     # isolate needs to create cgroups and namespaces for each sandbox.
@@ -50,7 +51,8 @@ services:
   app:
     build:
       context: .
-      dockerfile: deploy/Dockerfile.app
+      dockerfile: deploy/Dockerfile
+      target: app
     image: cyculcal-app:${CYCULCAL_VERSION:-local}
     restart: unless-stopped
     depends_on:
