@@ -1,4 +1,4 @@
-//! Embedded OAuth 2.1 authorization server for MCP clients (docs/mcp.md).
+//! Embedded OAuth 2.1 authorization server for MCP clients.
 //!
 //! The MCP server at `/mcp` is the protected resource. Clients discover this
 //! server through RFC 9728 / RFC 8414 metadata, register dynamically (RFC 7591)

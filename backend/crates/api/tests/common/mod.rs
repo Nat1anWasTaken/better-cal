@@ -1,7 +1,7 @@
 //! Test harness: a fresh PostgreSQL database per test, the real router
 //! in-process, judge workers talking to the real judge-runner.
 //!
-//! Requires (see docs/testing.md):
+//! Requires:
 //!   TEST_DATABASE_URL  admin URL of a PostgreSQL server (a database per test is created)
 //!   RUNNER_URL / RUNNER_TOKEN  a running judge-runner (docker compose ... up runner)
 #![allow(dead_code)]
