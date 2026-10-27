@@ -964,6 +964,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace your preferences (editor theme, keymap, font and layout). */
+        put: operations["put_preferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/concepts": {
         parameters: {
             query?: never;
@@ -1567,6 +1584,8 @@ export interface components {
              */
             version: number;
         };
+        /** @enum {string} */
+        EditorTheme: "auto" | "light" | "dark" | "hc_dark" | "hc_light";
         EffectivePolicy: {
             auto_reveal_hints: components["schemas"]["Sourced_u8"];
             default_set_id: components["schemas"]["Sourced_Option_String"];
@@ -1660,6 +1679,8 @@ export interface components {
         };
         /** @enum {string} */
         JudgeHealth: "ok" | "down" | "unknown";
+        /** @enum {string} */
+        Keymap: "default" | "vim";
         Leaderboard: {
             /** @description Results after `round.frozen_at` are hidden from this viewer. */
             frozen: boolean;
@@ -1673,6 +1694,8 @@ export interface components {
             /** @description Only students who submitted during the round, best first. */
             rows: components["schemas"]["BoardRow"][];
         };
+        /** @enum {string} */
+        LineNumbers: "on" | "relative" | "off";
         LoginRequest: {
             password: string;
             username: string;
@@ -2510,8 +2533,33 @@ export interface components {
             /** Format: uuid */
             id: string;
             must_change_password: boolean;
+            preferences: components["schemas"]["UserPreferences"];
             role: components["schemas"]["Role"];
             username: string;
+        };
+        UserPreferences: {
+            /** @default auto */
+            editor_theme: components["schemas"]["EditorTheme"];
+            /**
+             * Format: int32
+             * @description 10–28 px.
+             * @default 14
+             */
+            font_size: number;
+            /** @default default */
+            keymap: components["schemas"]["Keymap"];
+            /** @default on */
+            line_numbers: components["schemas"]["LineNumbers"];
+            /** @default false */
+            minimap: boolean;
+            /**
+             * Format: int32
+             * @description 2, 4 or 8.
+             * @default 4
+             */
+            tab_size: number;
+            /** @default false */
+            word_wrap: boolean;
         };
         UserProblemProgress: {
             credited: boolean;
@@ -4436,6 +4484,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    put_preferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserPreferences"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPreferences"];
+                };
             };
             422: {
                 headers: {

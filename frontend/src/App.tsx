@@ -15,6 +15,7 @@ const AdminApp = lazy(() => import('@/pages/admin/AdminApp'))
 const ProblemPage = lazy(() => import('@/pages/ProblemPage').then((m) => ({ default: m.ProblemPage })))
 const MySubmissionsPage = lazy(() => import('@/pages/MySubmissions').then((m) => ({ default: m.MySubmissionsPage })))
 const SubmissionDetailPage = lazy(() => import('@/pages/MySubmissions').then((m) => ({ default: m.SubmissionDetailPage })))
+const PreferencesPage = lazy(() => import('@/pages/Preferences').then((m) => ({ default: m.PreferencesPage })))
 const LeaderboardPage = lazy(() => import('@/pages/Leaderboard').then((m) => ({ default: m.LeaderboardPage })))
 
 const lazyPage = (el: React.ReactNode) => <Suspense fallback={<Loading />}>{el}</Suspense>
@@ -52,6 +53,7 @@ export function App() {
         <Route element={<AppShell />}>
           <Route index element={<HomePage />} />
           <Route path="/account" element={<AccountRoute />} />
+          <Route path="/settings" element={lazyPage(<PreferencesPage />)} />
           <Route path="/sets/:setId" element={<SetPage />} />
           <Route path="/sets/:setId/problems/:slug" element={lazyPage(<ProblemPage />)} />
           <Route path="/problems/:slug" element={lazyPage(<ProblemPage />)} />

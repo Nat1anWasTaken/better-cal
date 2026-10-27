@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogOut, Monitor, Moon, Sun, UserRound } from 'lucide-react'
+import { LayoutDashboard, LogOut, Monitor, Moon, Settings2, Sun, UserRound } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router'
 
 import { SystemBanner } from '@/components/Banners'
@@ -39,6 +39,10 @@ export function UserMenu() {
         <DropdownMenuItem onSelect={() => nav('/account')}>
           <UserRound aria-hidden />
           帳號與密碼
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => nav('/settings')}>
+          <Settings2 aria-hidden />
+          偏好設定
         </DropdownMenuItem>
         {isOwner && (
           <DropdownMenuItem onSelect={() => nav('/admin')}>

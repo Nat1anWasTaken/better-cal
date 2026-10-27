@@ -5,6 +5,7 @@ import type { components } from './schema'
 type S = components['schemas']
 
 export type Me = S['Me']
+export type UserPreferences = S['UserPreferences']
 export type SiteInfo = S['SiteInfo']
 export type SetSummary = S['SetSummary']
 export type SetDetail = S['SetDetail']

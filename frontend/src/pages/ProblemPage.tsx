@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { api } from '@/api/client'
 import type { ProblemView, SetDetail, Span, SubmissionView } from '@/api/types'
 import { CodeEditor, type CodeEditorHandle, type EditorDiagnostic } from '@/components/CodeEditor'
+import { EditorPreferencesPopover } from '@/components/EditorPreferencesPopover'
 import { Markdown } from '@/components/Markdown'
 import { ErrorState, Loading, Page } from '@/components/Page'
 import { SubmissionResult } from '@/components/SubmissionResult'
@@ -228,6 +229,7 @@ export function ProblemPage() {
         <RotateCcw aria-hidden />
         <span className="hidden xl:inline">恢復起始程式</span>
       </Button>
+      <EditorPreferencesPopover />
       <Button variant="outline" size="sm" onClick={() => send('run')} disabled={!!busy} title="Ctrl + Enter" data-testid="run-button">
         <Play aria-hidden />
         {busy === 'run' ? '送出中…' : '執行'}

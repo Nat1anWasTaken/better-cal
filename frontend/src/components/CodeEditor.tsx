@@ -1,7 +1,12 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 
+import type { UserPreferences } from '@/api/types'
+import { useIsDark } from '@/hooks/useIsDark'
+import { usePreferences } from '@/hooks/usePreferences'
 import { type BlankRange, applyEdit, changeAllowed, extractBlanks, fixedRanges } from '@/lib/fillin'
 import { monaco } from '@/lib/monaco'
+import { editorOptions, monacoTheme } from '@/lib/preferences'
+import { cn } from '@/lib/utils'
 
 export interface EditorDiagnostic {
   line: number
@@ -33,6 +38,8 @@ interface Props {
   onSubmit?: () => void
   ariaLabel?: string
   className?: string
+  /** Overrides the signed-in user's saved preferences (live preview). */
+  preferences?: UserPreferences
 }
 
 const severities = {
@@ -48,10 +55,16 @@ function rangeOf(model: monaco.editor.ITextModel, from: number, to: number): mon
 }
 
 export const CodeEditor = forwardRef<CodeEditorHandle, Props>(function CodeEditor(
-  { initialDoc, blankRanges, readOnly, diagnostics, onChange, onRun, onSubmit, ariaLabel = '程式編輯器', className },
+  { initialDoc, blankRanges, readOnly, diagnostics, onChange, onRun, onSubmit, ariaLabel = '程式編輯器', className, preferences },
   ref,
 ) {
+  const saved = usePreferences().preferences
+  const prefs = preferences ?? saved
+  const theme = monacoTheme(prefs.editor_theme, useIsDark())
+  const vim = prefs.keymap === 'vim'
   const host = useRef<HTMLDivElement>(null)
+  const status = useRef<HTMLDivElement>(null)
+  const vimMode = useRef<{ dispose: () => void } | null>(null)
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const ranges = useRef<BlankRange[]>([])
   const decorate = useRef(() => {})
@@ -66,7 +79,8 @@ export const CodeEditor = forwardRef<CodeEditorHandle, Props>(function CodeEdito
     const model = monaco.editor.createModel(initialDoc, 'c')
     const e = monaco.editor.create(host.current, {
       model,
-      theme: 'vs-dark',
+      ...editorOptions(prefs),
+      theme,
       readOnly,
       automaticLayout: true,
       minimap: { enabled: false },
@@ -123,6 +137,9 @@ export const CodeEditor = forwardRef<CodeEditorHandle, Props>(function CodeEdito
 
     return () => {
       sub.dispose()
+      // Detach Vim before the editor goes away (this cleanup runs before the Vim effect's).
+      vimMode.current?.dispose()
+      vimMode.current = null
       e.dispose()
       model.dispose()
       editor.current = null
@@ -130,6 +147,32 @@ export const CodeEditor = forwardRef<CodeEditorHandle, Props>(function CodeEdito
     // The editor is created once; later updates go through the imperative handle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readOnly])
+
+  useEffect(() => {
+    const e = editor.current
+    if (!e) return
+    e.updateOptions(editorOptions(prefs))
+    e.getModel()?.updateOptions({ tabSize: prefs.tab_size, indentSize: prefs.tab_size, insertSpaces: true })
+    // Monaco themes are global; every editor on the page shares one.
+    monaco.editor.setTheme(theme)
+  }, [prefs, theme, readOnly])
+
+  useEffect(() => {
+    const e = editor.current
+    const node = status.current
+    if (!vim || !e || !node) return
+    let cancelled = false
+    // Loaded on demand so the Vim keymap stays out of the editor chunk.
+    void import('monaco-vim').then(({ initVimMode }) => {
+      if (!cancelled) vimMode.current = initVimMode(e, node)
+    })
+    return () => {
+      cancelled = true
+      vimMode.current?.dispose()
+      vimMode.current = null
+      node.textContent = ''
+    }
+  }, [vim, readOnly])
 
   useEffect(() => {
     const model = editor.current?.getModel()
@@ -190,5 +233,10 @@ export const CodeEditor = forwardRef<CodeEditorHandle, Props>(function CodeEdito
     [],
   )
 
-  return <div ref={host} className={className} data-testid="code-editor" />
+  return (
+    <div className={cn('flex flex-col', className)}>
+      <div ref={host} className="min-h-0 flex-1" data-testid="code-editor" />
+      {vim && <div ref={status} className="border-t bg-card px-3 py-0.5 font-mono text-xs text-muted-foreground" data-testid="vim-status" />}
+    </div>
+  )
 })
