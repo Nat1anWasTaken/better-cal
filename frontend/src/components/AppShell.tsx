@@ -35,7 +35,7 @@ export function UserMenu() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuLabel className="font-normal text-muted-foreground">{me.user.username}</DropdownMenuLabel>
+        <DropdownMenuLabel variant="body">{me.user.username}</DropdownMenuLabel>
         <DropdownMenuItem onSelect={() => nav('/account')}>
           <UserRound aria-hidden />
           帳號與密碼
@@ -47,7 +47,7 @@ export function UserMenu() {
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">外觀</DropdownMenuLabel>
+        <DropdownMenuLabel variant="caption">外觀</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={theme} onValueChange={(v) => setTheme(v as typeof theme)}>
           <DropdownMenuRadioItem value="light">
             <Sun aria-hidden /> 淺色

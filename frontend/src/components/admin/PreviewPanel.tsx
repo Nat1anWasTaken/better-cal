@@ -56,12 +56,12 @@ export function PreviewPanel({ initialSample = 'semicolon' }: { initialSample?: 
         </div>
         <div className="flex items-center gap-2 pb-2">
           <Switch id="use-drafts" checked={drafts} onCheckedChange={setDrafts} />
-          <Label htmlFor="use-drafts" className="font-normal">
+          <Label htmlFor="use-drafts" variant="option">
             包含尚未發布的草稿
           </Label>
         </div>
       </div>
-      <Textarea aria-label="預覽用的程式" rows={9} className="font-mono text-sm" value={code} onChange={(e) => setCode(e.target.value)} />
+      <Textarea aria-label="預覽用的程式" rows={9} variant="code" value={code} onChange={(e) => setCode(e.target.value)} />
       <div className="space-y-1.5">
         <Label>假設學生已學過</Label>
         <ConceptPicker idPrefix="pv" value={concepts} onChange={setConcepts} />

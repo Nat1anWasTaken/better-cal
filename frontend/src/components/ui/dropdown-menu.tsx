@@ -158,16 +158,22 @@ function DropdownMenuRadioItem({
 function DropdownMenuLabel({
   className,
   inset,
+  variant = "default",
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Label> & {
   inset?: boolean
+  /** `body`: regular text (e.g. the signed-in user's name); `caption`: small secondary line. */
+  variant?: "default" | "body" | "caption"
 }) {
   return (
     <DropdownMenuPrimitive.Label
       data-slot="dropdown-menu-label"
       data-inset={inset}
       className={cn(
-        "px-1.5 py-1 text-xs font-medium text-muted-foreground data-inset:pl-7",
+        "px-1.5 py-1 text-muted-foreground data-inset:pl-7",
+        variant === "default" && "text-xs font-medium",
+        variant === "body" && "text-sm font-normal",
+        variant === "caption" && "text-xs font-normal",
         className
       )}
       {...props}

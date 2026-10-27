@@ -16,14 +16,18 @@ function Group({ title, cards, defaultOpen, ...rest }: Omit<Props, 'cards'> & { 
   if (cards.length === 0) return null
   return (
     <Collapsible defaultOpen={defaultOpen}>
-      <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md py-1.5 text-left font-medium hover:text-primary">
-        <ChevronDown aria-hidden className="size-4 transition-transform group-data-[state=open]:rotate-180" />
-        {title}
+      <CollapsibleTrigger asChild>
+        <button type="button" className="group flex w-full items-center gap-2 rounded-md py-1.5 text-left font-medium hover:text-primary">
+          <ChevronDown aria-hidden className="size-4 transition-transform group-data-[state=open]:rotate-180" />
+          {title}
+        </button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-3 pt-2">
-        {cards.map((c) => (
-          <FeedbackCard key={c.finding_id} card={c} onJump={rest.onJump} onRevealHint={rest.onRevealHint} defaultRawOpen={rest.rawExpanded} compact />
-        ))}
+      <CollapsibleContent>
+        <div className="space-y-3 pt-2">
+          {cards.map((c) => (
+            <FeedbackCard key={c.finding_id} card={c} onJump={rest.onJump} onRevealHint={rest.onRevealHint} defaultRawOpen={rest.rawExpanded} compact />
+          ))}
+        </div>
       </CollapsibleContent>
     </Collapsible>
   )

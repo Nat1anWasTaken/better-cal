@@ -86,7 +86,7 @@ export function TokensPage() {
               {SCOPES.map((s) => (
                 <div key={s.id} className="flex items-center gap-2">
                   <Checkbox id={`sc-${s.id}`} checked={scopes.includes(s.id)} onCheckedChange={(on) => setScopes(on ? [...scopes, s.id] : scopes.filter((x) => x !== s.id))} />
-                  <Label htmlFor={`sc-${s.id}`} className="font-normal">
+                  <Label htmlFor={`sc-${s.id}`} variant="option">
                     {s.label} <code className="font-mono text-xs text-muted-foreground">{s.id}</code>
                   </Label>
                 </div>
@@ -123,7 +123,7 @@ export function TokensPage() {
                     ) : expired ? (
                       <StatusPill tone="neutral" label="已過期" />
                     ) : (
-                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => window.confirm(`撤銷「${t.name}」？`) && revoke.mutate(t.id)}>
+                      <Button size="sm" variant="ghost-destructive" onClick={() => window.confirm(`撤銷「${t.name}」？`) && revoke.mutate(t.id)}>
                         撤銷
                       </Button>
                     )}

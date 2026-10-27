@@ -100,12 +100,26 @@ in `eslint.config.js`, and discovery comes from `components.json` and the tokens
 | `shadcn/no-inline-styles` | error | Dynamic widths go through CSS custom properties: `w-(--meter)`. |
 | `shadcn/no-unknown-classes` | error | |
 | `shadcn/require-static-classes` | error | |
-| `shadcn/no-restyle` | **off** | See below. |
+| `shadcn/no-restyle` | error, `allow: ["layout"]` | Pages may place and size primitives; everything else goes through variants. |
 
-Why `no-restyle` is off: in this version it rejects *any* class on most primitives, including layout
-such as `w-44` on `SelectTrigger`, `ml-auto` on `Button` and `flex` on `CollapsibleTrigger`. It reported
-163 violations, and fixing them would mean wrapping almost every control in an extra element.
-Colour restyling is still prevented by `no-raw-colors` and by the project rules below.
+`no-restyle` keeps primitives looking the same everywhere. Pages may only add **layout** classes
+(width, margin, flex/grid placement, e.g. `w-44` on `SelectTrigger`, `ml-auto` on `Button`).
+Typography, colour, shape and inner spacing belong to the component, so the recurring treatments are
+named variants in `src/components/ui/`:
+
+| Primitive | Variant | Used for |
+| --- | --- | --- |
+| `Button` | `ghost-destructive` | quiet delete / archive / revoke actions |
+| `Input` | `code` | slugs, regexes, warning options |
+| `Textarea` | `code`, `code-sm` | C source, test data, CSV, import JSON |
+| `Label` | `option` | text beside a checkbox or switch |
+| `DropdownMenuLabel` | `body`, `caption` | account name and section captions in menus |
+| `SheetContent` | `sidebar` | the mobile admin navigation drawer |
+| `Tabs` | `flush` | full-height tab layouts without the list/panel gap |
+
+Unstyled Radix parts used as disclosure rows (`CollapsibleTrigger`, `CollapsibleContent`, a
+`TabsContent` panel) are not restyled. The styling sits on a plain element instead: `asChild` with a
+`<button>`, or a wrapper `<div>` inside the content, as the rule's messages suggest.
 
 Project rule (`no-restricted-syntax`): raw Tailwind palette colours (e.g. `bg-red-500`) and hex
 arbitrary colours (`text-[#…]`) are errors outside `src/components/ui/`.

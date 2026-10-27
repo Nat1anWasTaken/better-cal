@@ -65,7 +65,7 @@ function CohortForm({ initial, onDone }: { initial: Form; onDone: () => void }) 
           儲存
         </Button>
         {f.id && (
-          <Button variant="ghost" className="text-destructive" onClick={() => window.confirm(`刪除組別「${f.name}」？`) && del.mutate()}>
+          <Button variant="ghost-destructive" onClick={() => window.confirm(`刪除組別「${f.name}」？`) && del.mutate()}>
             <Trash2 aria-hidden />
             刪除組別
           </Button>

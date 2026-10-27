@@ -8,14 +8,19 @@ import { Tabs as TabsPrimitive } from "radix-ui"
 function Tabs({
   className,
   orientation = "horizontal",
+  variant = "default",
   ...props
-}: React.ComponentProps<typeof TabsPrimitive.Root>) {
+}: React.ComponentProps<typeof TabsPrimitive.Root> & {
+  /** `flush`: no gap between the tab list and panels (full-height layouts). */
+  variant?: "default" | "flush"
+}) {
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
       data-orientation={orientation}
       className={cn(
-        "group/tabs flex gap-2 data-horizontal:flex-col",
+        "group/tabs flex data-horizontal:flex-col",
+        variant === "default" ? "gap-2" : "gap-0",
         className
       )}
       {...props}

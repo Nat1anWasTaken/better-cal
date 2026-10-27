@@ -155,7 +155,7 @@ function BatchDialog() {
           <PasswordList users={result.created} />
         ) : (
           <div className="space-y-3">
-            <Textarea aria-label="學生名單" rows={10} className="font-mono text-sm" value={csv} onChange={(e) => (setCsv(e.target.value), setResult(null))} />
+            <Textarea aria-label="學生名單" rows={10} variant="code" value={csv} onChange={(e) => (setCsv(e.target.value), setResult(null))} />
             <Select value={cohort} onValueChange={setCohort}>
               <SelectTrigger aria-label="加入組別">
                 <SelectValue />

@@ -127,7 +127,7 @@ function AdminLayout() {
                 <Menu aria-hidden />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 bg-sidebar p-0">
+            <SheetContent side="left" variant="sidebar" className="w-64">
               <SheetTitle className="sr-only">管理後台選單</SheetTitle>
               <SideNav onNavigate={() => setOpen(false)} />
             </SheetContent>

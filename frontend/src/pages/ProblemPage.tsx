@@ -271,7 +271,7 @@ export function ProblemPage() {
       <div className="border-t bg-card px-3 py-2">
         <div className="flex items-center gap-2">
           <Switch id="custom-stdin" checked={useCustom} onCheckedChange={setUseCustom} />
-          <Label htmlFor="custom-stdin" className="text-sm font-normal">
+          <Label htmlFor="custom-stdin" variant="option">
             用自己的輸入執行
           </Label>
           <span className="ml-auto hidden text-xs text-muted-foreground md:inline">Ctrl+Enter 執行 · Ctrl+Shift+Enter 提交</span>
@@ -279,7 +279,8 @@ export function ProblemPage() {
         {useCustom && (
           <Textarea
             aria-label="自訂輸入（stdin）"
-            className="mt-2 h-20 font-mono text-sm"
+            variant="code"
+            className="mt-2 h-20"
             placeholder="在這裡輸入要給程式的資料，例如：3 5"
             value={stdin}
             onChange={(e) => setStdin(e.target.value)}
@@ -339,7 +340,7 @@ export function ProblemPage() {
           </ResizablePanel>
         </ResizablePanelGroup>
       ) : (
-        <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col gap-0">
+        <Tabs value={tab} onValueChange={setTab} variant="flush" className="flex min-h-0 flex-1 flex-col">
           <TabsList className="mx-3 my-2 w-auto">
             <TabsTrigger value="statement">題目</TabsTrigger>
             <TabsTrigger value="editor">程式</TabsTrigger>

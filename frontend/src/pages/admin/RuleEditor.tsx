@@ -156,7 +156,7 @@ export function RuleEditorPage() {
             <div className="flex flex-wrap gap-6">
               <div className="flex items-center gap-2">
                 <Switch id="enabled" checked={f.enabled} onCheckedChange={(enabled) => set({ enabled })} />
-                <Label htmlFor="enabled" className="font-normal">
+                <Label htmlFor="enabled" variant="option">
                   啟用（停用時顯示通用說明卡）
                 </Label>
               </div>

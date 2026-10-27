@@ -24,7 +24,7 @@ function SetChecklist({ sets, value, onChange, idPrefix }: { sets: AdminSet[]; v
       {sets.map((s) => (
         <div key={s.id} className="flex items-center gap-2">
           <Checkbox id={`${idPrefix}-${s.id}`} checked={value.includes(s.id)} onCheckedChange={(on) => onChange(on ? [...value, s.id] : value.filter((x) => x !== s.id))} />
-          <Label htmlFor={`${idPrefix}-${s.id}`} className="font-normal">
+          <Label htmlFor={`${idPrefix}-${s.id}`} variant="option">
             {s.title}
             {s.status !== 'published' && <span className="text-xs text-muted-foreground">（未發布）</span>}
           </Label>
@@ -51,7 +51,7 @@ export function PolicyEditor({ value, onChange, errors = {}, level, idPrefix }: 
             <Field label="可以看到的題目集">
               <div className="flex items-center gap-2">
                 <Checkbox id={`${idPrefix}-restrict`} checked={restrict} onCheckedChange={(on) => set({ visible_set_ids: on ? [] : null })} />
-                <Label htmlFor={`${idPrefix}-restrict`} className="font-normal">
+                <Label htmlFor={`${idPrefix}-restrict`} variant="option">
                   只顯示指定的題目集（不勾選：所有公開列出的已發布題目集）
                 </Label>
               </div>

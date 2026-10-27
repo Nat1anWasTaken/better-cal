@@ -115,7 +115,7 @@ export function ImportExportPage() {
           }
         >
           <Field label="JSON 內容" htmlFor="import-json">
-            <Textarea id="import-json" rows={14} className="font-mono text-xs" value={text} onChange={(e) => (setText(e.target.value), setReport(null))} placeholder='{"format_version": "cycu-cal.import/v1", "problems": [...], "problem_sets": [...]}' />
+            <Textarea id="import-json" rows={14} variant="code-sm" value={text} onChange={(e) => (setText(e.target.value), setReport(null))} placeholder='{"format_version": "cycu-cal.import/v1", "problems": [...], "problem_sets": [...]}' />
           </Field>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" disabled={!text || run.isPending} onClick={() => run.mutate(true)}>

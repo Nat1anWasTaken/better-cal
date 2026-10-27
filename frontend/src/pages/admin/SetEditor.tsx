@@ -187,7 +187,7 @@ export function SetEditorPage() {
               <Star aria-hidden />
               設為目前啟用
             </Button>
-            <Button variant="ghost" className="text-destructive" disabled={act.isPending || s.active} onClick={() => window.confirm('封存這個題目集？題目本身不受影響。') && act.mutate('archive')}>
+            <Button variant="ghost-destructive" disabled={act.isPending || s.active} onClick={() => window.confirm('封存這個題目集？題目本身不受影響。') && act.mutate('archive')}>
               <Trash2 aria-hidden />
               封存
             </Button>
@@ -199,7 +199,7 @@ export function SetEditorPage() {
         <SectionCard title="基本資料">
           {isNew && (
             <Field label="Slug（建立後不能修改）" htmlFor="sslug" error={errors['/slug']}>
-              <Input id="sslug" className="font-mono" value={form.slug} onChange={(e) => set({ slug: e.target.value })} />
+              <Input id="sslug" variant="code" value={form.slug} onChange={(e) => set({ slug: e.target.value })} />
             </Field>
           )}
           <Field label="名稱" htmlFor="stitle" error={errors['/title']}>
@@ -210,7 +210,7 @@ export function SetEditorPage() {
           </Field>
           <div className="flex items-center gap-2">
             <Switch id="slisted" checked={form.listed} onCheckedChange={(listed) => set({ listed })} />
-            <Label htmlFor="slisted" className="font-normal">
+            <Label htmlFor="slisted" variant="option">
               在學生的題目集列表中公開列出（關閉時只有被指定的組別或學生看得到）
             </Label>
           </div>

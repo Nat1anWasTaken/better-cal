@@ -94,7 +94,7 @@ export function CustomRulePage() {
       <div className="space-y-6">
         <SectionCard title="比對條件">
           <Field label="規則 id（以 custom. 開頭）" htmlFor="cid" error={e['/rule/id']}>
-            <Input id="cid" className="max-w-sm font-mono" value={rule.id} disabled={!isNew} onChange={(ev) => set({ id: ev.target.value })} />
+            <Input id="cid" variant="code" className="max-w-sm" value={rule.id} disabled={!isNew} onChange={(ev) => set({ id: ev.target.value })} />
           </Field>
           <div className="grid gap-4 md:grid-cols-3">
             <Field label="訊息種類">
@@ -110,17 +110,17 @@ export function CustomRulePage() {
               </Select>
             </Field>
             <Field label="警告類別（選填，例如 -Wformat=）" htmlFor="copt">
-              <Input id="copt" className="font-mono" value={rule.option ?? ''} onChange={(ev) => set({ option: ev.target.value || null })} />
+              <Input id="copt" variant="code" value={rule.option ?? ''} onChange={(ev) => set({ option: ev.target.value || null })} />
             </Field>
             <div className="flex items-center gap-2 pt-6">
               <Switch id="cen" checked={rule.enabled} onCheckedChange={(enabled) => set({ enabled })} />
-              <Label htmlFor="cen" className="font-normal">
+              <Label htmlFor="cen" variant="option">
                 啟用
               </Label>
             </div>
           </div>
           <Field label="訊息正規表達式" htmlFor="cre" error={e['/rule/message_regex']} hint="具名群組會變成文字裡可用的變數，例如 (?P<kw>break|continue) 可以在文字中寫 {kw}。">
-            <Input id="cre" className="font-mono" value={rule.message_regex} onChange={(ev) => set({ message_regex: ev.target.value })} />
+            <Input id="cre" variant="code" value={rule.message_regex} onChange={(ev) => set({ message_regex: ev.target.value })} />
           </Field>
         </SectionCard>
         <SectionCard title="範例程式">
@@ -150,7 +150,7 @@ export function CustomRulePage() {
             {save.isPending ? '編譯範例並檢查中…' : '檢查並儲存草稿'}
           </Button>
           {!isNew && (
-            <Button variant="ghost" className="text-destructive" onClick={() => remove.mutate()}>
+            <Button variant="ghost-destructive" onClick={() => remove.mutate()}>
               <Trash2 aria-hidden />
               移除這個規則
             </Button>

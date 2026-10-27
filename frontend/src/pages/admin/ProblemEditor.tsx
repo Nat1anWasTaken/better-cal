@@ -58,7 +58,6 @@ function toRequest(c: ProblemContent): ProblemContent {
   }
 }
 
-const mono = 'font-mono text-sm'
 
 function TestsEditor({ tests, onChange, errors }: { tests: TestCaseInput[]; onChange: (t: TestCaseInput[]) => void; errors: Record<string, string> }) {
   const set = (i: number, patch: Partial<TestCaseInput>) => onChange(tests.map((t, j) => (j === i ? { ...t, ...patch } : t)))
@@ -98,10 +97,10 @@ function TestsEditor({ tests, onChange, errors }: { tests: TestCaseInput[]; onCh
           </div>
           <div className="grid gap-2 md:grid-cols-2">
             <Field label="輸入" error={errors[`/tests/${i}/input`]}>
-              <Textarea className={mono} rows={3} value={t.input} onChange={(e) => set(i, { input: e.target.value })} />
+              <Textarea variant="code" rows={3} value={t.input} onChange={(e) => set(i, { input: e.target.value })} />
             </Field>
             <Field label="預期輸出" error={errors[`/tests/${i}/expected_output`]}>
-              <Textarea className={mono} rows={3} value={t.expected_output} onChange={(e) => set(i, { expected_output: e.target.value })} />
+              <Textarea variant="code" rows={3} value={t.expected_output} onChange={(e) => set(i, { expected_output: e.target.value })} />
             </Field>
           </div>
           <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
@@ -177,12 +176,12 @@ function TestRunPanel({ slug, mode, blankIds }: { slug: string; mode: string; bl
       {mode === 'fill_in' ? (
         blankIds.map((id) => (
           <Field key={id} label={`區塊 ${id}`}>
-            <Textarea className={mono} rows={4} value={blanks[id] ?? ''} onChange={(e) => setBlanks({ ...blanks, [id]: e.target.value })} />
+            <Textarea variant="code" rows={4} value={blanks[id] ?? ''} onChange={(e) => setBlanks({ ...blanks, [id]: e.target.value })} />
           </Field>
         ))
       ) : (
         <Field label="程式">
-          <Textarea className={mono} rows={8} value={code} onChange={(e) => setCode(e.target.value)} placeholder="貼上要測試的 C 程式（例如常見的錯誤寫法）" />
+          <Textarea variant="code" rows={8} value={code} onChange={(e) => setCode(e.target.value)} placeholder="貼上要測試的 C 程式（例如常見的錯誤寫法）" />
         </Field>
       )}
       <div className="flex gap-2">
@@ -334,7 +333,7 @@ export function ProblemEditorPage() {
                 取消發布
               </Button>
             )}
-            <Button variant="ghost" className="text-destructive" onClick={() => action('archive')} disabled={busy !== null || d?.status === 'archived'}>
+            <Button variant="ghost-destructive" onClick={() => action('archive')} disabled={busy !== null || d?.status === 'archived'}>
               <Trash2 aria-hidden />
               封存
             </Button>
@@ -372,7 +371,7 @@ export function ProblemEditorPage() {
         <SectionCard title="基本資料">
           {isNew && (
             <Field label="Slug（穩定識別碼，建立後不能修改）" htmlFor="slug" error={e['/slug']} hint="小寫英文、數字與連字號，例如 a-plus-b">
-              <Input id="slug" className="max-w-sm font-mono" value={slug} onChange={(ev) => setSlug(ev.target.value)} />
+              <Input id="slug" variant="code" className="max-w-sm" value={slug} onChange={(ev) => setSlug(ev.target.value)} />
             </Field>
           )}
           <Field label="題目名稱" htmlFor="title" error={e['/title']}>
@@ -427,8 +426,10 @@ export function ProblemEditorPage() {
             <TabsContent value="edit">
               <Textarea aria-label="題敘 Markdown" rows={12} value={content.statement_md} onChange={(ev) => set({ statement_md: ev.target.value })} />
             </TabsContent>
-            <TabsContent value="preview" className="rounded-md border p-4">
-              <Markdown>{content.statement_md}</Markdown>
+            <TabsContent value="preview">
+              <div className="rounded-md border p-4">
+                <Markdown>{content.statement_md}</Markdown>
+              </div>
             </TabsContent>
           </Tabs>
           <FieldMessage message={e['/statement_md']} />
@@ -436,8 +437,8 @@ export function ProblemEditorPage() {
             <div className="text-sm font-medium">範例</div>
             {(content.examples ?? []).map((ex, i) => (
               <div key={i} className="grid gap-2 rounded-md border p-3 md:grid-cols-pair-action">
-                <Textarea aria-label={`範例 ${i + 1} 輸入`} className={mono} rows={2} placeholder="輸入" value={ex.input} onChange={(ev) => set({ examples: content.examples!.map((x, j) => (j === i ? { ...x, input: ev.target.value } : x)) })} />
-                <Textarea aria-label={`範例 ${i + 1} 輸出`} className={mono} rows={2} placeholder="輸出" value={ex.output} onChange={(ev) => set({ examples: content.examples!.map((x, j) => (j === i ? { ...x, output: ev.target.value } : x)) })} />
+                <Textarea aria-label={`範例 ${i + 1} 輸入`} variant="code" rows={2} placeholder="輸入" value={ex.input} onChange={(ev) => set({ examples: content.examples!.map((x, j) => (j === i ? { ...x, input: ev.target.value } : x)) })} />
+                <Textarea aria-label={`範例 ${i + 1} 輸出`} variant="code" rows={2} placeholder="輸出" value={ex.output} onChange={(ev) => set({ examples: content.examples!.map((x, j) => (j === i ? { ...x, output: ev.target.value } : x)) })} />
                 <Button variant="ghost" size="icon" aria-label={`刪除範例 ${i + 1}`} onClick={() => set({ examples: content.examples!.filter((_, j) => j !== i) })}>
                   <Trash2 aria-hidden />
                 </Button>
@@ -458,22 +459,22 @@ export function ProblemEditorPage() {
                 error={e['/template']}
                 hint="用 /*@blank 名稱@*/ 預設內容 /*@end@*/ 標出學生可以修改的區塊，其餘部分學生不能修改。"
               >
-                <Textarea className={mono} rows={14} value={content.template ?? ''} onChange={(ev) => set({ template: ev.target.value })} />
+                <Textarea variant="code" rows={14} value={content.template ?? ''} onChange={(ev) => set({ template: ev.target.value })} />
               </Field>
               <p className="text-sm text-muted-foreground">偵測到的區塊：{blankIds.length ? blankIds.join('、') : '（沒有）'}</p>
               {blankIds.map((id) => (
                 <Field key={id} label={`參考解答：區塊 ${id}`} error={e['/reference_blanks']}>
-                  <Textarea className={mono} rows={4} value={content.reference_blanks?.[id] ?? ''} onChange={(ev) => set({ reference_blanks: { ...(content.reference_blanks ?? {}), [id]: ev.target.value } })} />
+                  <Textarea variant="code" rows={4} value={content.reference_blanks?.[id] ?? ''} onChange={(ev) => set({ reference_blanks: { ...(content.reference_blanks ?? {}), [id]: ev.target.value } })} />
                 </Field>
               ))}
             </>
           ) : (
             <>
               <Field label="起始程式（學生打開題目時看到的內容）" error={e['/starter_code']}>
-                <Textarea className={mono} rows={10} value={content.starter_code ?? ''} onChange={(ev) => set({ starter_code: ev.target.value })} />
+                <Textarea variant="code" rows={10} value={content.starter_code ?? ''} onChange={(ev) => set({ starter_code: ev.target.value })} />
               </Field>
               <Field label="參考解答" error={e['/reference_solution']}>
-                <Textarea className={mono} rows={12} value={content.reference_solution ?? ''} onChange={(ev) => set({ reference_solution: ev.target.value })} />
+                <Textarea variant="code" rows={12} value={content.reference_solution ?? ''} onChange={(ev) => set({ reference_solution: ev.target.value })} />
               </Field>
             </>
           )}

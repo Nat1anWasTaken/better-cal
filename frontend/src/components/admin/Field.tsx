@@ -36,7 +36,7 @@ export function ConceptPicker({ value, onChange, idPrefix }: { value: string[]; 
         return (
           <div key={c.id} className="flex items-center gap-2">
             <Checkbox id={id} checked={value.includes(c.id)} onCheckedChange={(on) => onChange(on ? [...value, c.id] : value.filter((x) => x !== c.id))} />
-            <Label htmlFor={id} className="font-normal">
+            <Label htmlFor={id} variant="option">
               {c.label}
             </Label>
           </div>

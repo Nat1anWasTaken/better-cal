@@ -192,10 +192,12 @@ export function FeedbackCard({ card, onJump, onRevealHint, defaultRawOpen = fals
       )}
 
       {card.raw.length > 0 && (
-        <Collapsible defaultOpen={defaultRawOpen} className="border-t">
-          <CollapsibleTrigger className="group flex w-full items-center gap-1.5 px-4 py-2 text-left text-sm text-muted-foreground hover:text-foreground">
-            <ChevronDown aria-hidden className="size-4 transition-transform group-data-[state=open]:rotate-180" />
-            原始訊息（給進階學習者）
+        <Collapsible defaultOpen={defaultRawOpen}>
+          <CollapsibleTrigger asChild>
+            <button type="button" className="group flex w-full items-center gap-1.5 border-t px-4 py-2 text-left text-sm text-muted-foreground hover:text-foreground">
+              <ChevronDown aria-hidden className="size-4 transition-transform group-data-[state=open]:rotate-180" />
+              原始訊息（給進階學習者）
+            </button>
           </CollapsibleTrigger>
           <CollapsibleContent>
             <pre className="mx-4 mb-3 overflow-x-auto rounded-md bg-muted p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">

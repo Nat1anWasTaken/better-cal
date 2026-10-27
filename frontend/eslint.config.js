@@ -19,7 +19,8 @@ export default tseslint.config(
       'shadcn/require-static-classes': 'error',
       'shadcn/no-arbitrary-values': 'error',
       'shadcn/no-inline-styles': 'error',
-      // no-restyle is off: it forbids even layout classes (w-44, ml-auto) on primitives; see docs/frontend.md.
+      // Primitives keep their look; pages may only place/size them (layout classes).
+      'shadcn/no-restyle': ['error', { allow: ['layout'] }],
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],

@@ -74,25 +74,29 @@ export function TestResults({ tests, compareDescription }: { tests: TestView[]; 
           return (
             <li key={t.number} className="rounded-lg border bg-card" data-testid="test-result">
               <Collapsible defaultOpen={!t.hidden && (failed || t.custom)}>
-                <CollapsibleTrigger disabled={t.hidden} className="group flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left">
-                  {!t.hidden && <ChevronDown aria-hidden className="size-4 transition-transform group-data-[state=open]:rotate-180" />}
-                  {t.hidden && <EyeOff aria-hidden className="size-4 text-muted-foreground" />}
-                  <span className="font-medium">{title}</span>
-                  <StatusPill tone={v.tone} label={v.label} />
-                  <span className="ml-auto text-xs text-muted-foreground">
-                    {t.time_ms} ms · {Math.round(t.memory_kb / 1024)} MB
-                  </span>
+                <CollapsibleTrigger asChild disabled={t.hidden}>
+                  <button type="button" className="group flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left">
+                    {!t.hidden && <ChevronDown aria-hidden className="size-4 transition-transform group-data-[state=open]:rotate-180" />}
+                    {t.hidden && <EyeOff aria-hidden className="size-4 text-muted-foreground" />}
+                    <span className="font-medium">{title}</span>
+                    <StatusPill tone={v.tone} label={v.label} />
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {t.time_ms} ms · {Math.round(t.memory_kb / 1024)} MB
+                    </span>
+                  </button>
                 </CollapsibleTrigger>
                 {!t.hidden && (
-                  <CollapsibleContent className="space-y-3 border-t px-3 py-3">
-                    <div className={cn('grid gap-3', t.custom ? 'md:grid-cols-2' : 'md:grid-cols-3')}>
-                      <Block label="輸入" text={t.input} />
-                      {!t.custom && <Block label="預期輸出" text={t.expected_output} />}
-                      <Block label={t.custom ? '程式的輸出' : '你的輸出'} text={t.actual_output} testid="actual-output" />
+                  <CollapsibleContent>
+                    <div className="space-y-3 border-t px-3 py-3">
+                      <div className={cn('grid gap-3', t.custom ? 'md:grid-cols-2' : 'md:grid-cols-3')}>
+                        <Block label="輸入" text={t.input} />
+                        {!t.custom && <Block label="預期輸出" text={t.expected_output} />}
+                        <Block label={t.custom ? '程式的輸出' : '你的輸出'} text={t.actual_output} testid="actual-output" />
+                      </div>
+                      {t.output_truncated && <p className="text-sm text-warning">輸出太長，只顯示前面的部分。</p>}
+                      <Diff t={t} />
+                      {t.stderr && <Block label="錯誤輸出（stderr）" text={t.stderr} />}
                     </div>
-                    {t.output_truncated && <p className="text-sm text-warning">輸出太長，只顯示前面的部分。</p>}
-                    <Diff t={t} />
-                    {t.stderr && <Block label="錯誤輸出（stderr）" text={t.stderr} />}
                   </CollapsibleContent>
                 )}
               </Collapsible>
