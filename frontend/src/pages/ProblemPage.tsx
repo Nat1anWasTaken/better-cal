@@ -304,7 +304,7 @@ export function ProblemPage() {
   )
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div data-workspace className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b px-4 py-1.5 text-sm">
         {setId && (
           <Link to={`/sets/${setId}`} className="text-muted-foreground hover:text-foreground">

@@ -86,11 +86,12 @@ export function Brand() {
   )
 }
 
-/** Header + outlet for student pages. `fullHeight` pages (the workspace) manage their own scrolling. */
+/** Header + outlet for student pages. On desktop, a page marked `data-workspace` (the problem
+ * page) is held to the viewport height and manages its own scrolling. */
 export function AppShell() {
   const site = useSite()
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex min-h-dvh flex-col lg:has-[[data-workspace]]:h-dvh">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-card focus:px-3 focus:py-2">
         跳到主要內容
       </a>
