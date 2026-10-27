@@ -50,7 +50,7 @@ hints = ["`main` 的最後通常寫 `return 0;`。"]
 [rules."run.time_limit"]
 title = "程式執行超過時間限制"
 what = "程式在測資 #{test_number} 中執行超過 {limit_ms} 毫秒，被系統停止了。{?count}共有 {count} 筆測資發生這個問題。{/count}"
-cause = "{?while_scanf_line}第 {while_scanf_line} 行的 `while (scanf(...))` 可能在輸入讀完後停不下來，這是很常見的原因。{/while_scanf_line}{!while_scanf_line}{?low_cpu}程式幾乎沒有在運算，卻一直沒有結束，可能是在等待某件不會發生的事。{/low_cpu}{!low_cpu}可能是迴圈的結束條件永遠不會成立（無窮迴圈），也可能是方法太慢、計算量太大。{/low_cpu}{/while_scanf_line}"
+cause = "{?public_passed}公開測資都在時間內答對了，只有隱藏測資超時。隱藏測資的資料量常常比較大，所以比較可能是方法太慢；也可能是某種特殊輸入（例如 0 或負數）讓迴圈停不下來。{/public_passed}{!public_passed}{?while_scanf_line}第 {while_scanf_line} 行的 `while (scanf(...))` 可能在輸入讀完後停不下來，這是很常見的原因。{/while_scanf_line}{!while_scanf_line}{?low_cpu}程式幾乎沒有在運算，卻一直沒有結束，可能是在等待某件不會發生的事。{/low_cpu}{!low_cpu}可能是迴圈的結束條件永遠不會成立（無窮迴圈），也可能是方法太慢、計算量太大。{/low_cpu}{/while_scanf_line}{/public_passed}"
 why = "評測時每筆測資都有時間限制。逾時不一定代表無窮迴圈，也可能是演算法需要的計算太多。"
 next_steps = [
   "檢查每個迴圈：迴圈裡有沒有讓條件最終變成不成立的變化（例如 `i++`）？",
@@ -79,7 +79,7 @@ hints = ["用公開測資執行，看看輸出開頭的內容，可能就能發�
 [rules."judge.wrong_answer"]
 title = "輸出和預期答案不同"
 what = "程式順利執行完畢，但在測資 #{test_number} 的輸出和預期答案不一樣。{?count}共有 {count} 筆測資答案不同。{/count}"
-cause = "{?hidden}這是隱藏測資，無法顯示內容。常見原因是沒有考慮到特殊情況，或是輸出格式不同。{/hidden}{!hidden}請比較下方的「預期輸出」和「你的輸出」，看看哪裡不同。{/hidden}"
+cause = "{?hidden}這是隱藏測資，所以不會顯示輸入與預期輸出。{?public_passed}公開測資全部答對，只有隱藏測資答錯，通常代表主要做法是對的，只是有特殊情況沒處理到。{/public_passed}{!public_passed}常見原因是沒有考慮到特殊情況，或是輸出格式不同。{/public_passed}{/hidden}{!hidden}請比較下方的「預期輸出」和「你的輸出」，看看哪裡不同。{?also_hidden}另外還有 {also_hidden} 筆隱藏測資也答錯了；修好這筆之後，再想想還有哪些特殊情況。{/also_hidden}{/hidden}"
 why = "評測是逐字比對輸出結果，包括數字、文字、空白和換行。"
 next_steps = [
   "{?hidden}想一想題目允許的特殊輸入，例如最小值、最大值、0、負數或很大的數，自己用「自訂輸入」試試看。{/hidden}{!hidden}在比較區中找出第一個不同的地方。{/hidden}",
@@ -92,9 +92,13 @@ hints = [
 
 [rules."judge.whitespace_only"]
 title = "答案的內容對了，但空白或換行不同"
-what = "測資 #{test_number} 的輸出文字和預期答案相同，只有空白或換行的位置不一樣。"
-cause = "這一題要求輸出的空白與換行完全一致。"
-next_steps = ["在比較區中，注意標示出來的空白（·）和換行（↵）符號。", "檢查 printf 裡的空白和 `\\n` 是否跟題目要求一致。"]
+what = "測資 #{test_number} 的輸出文字和預期答案相同，只有空白或換行的位置不一樣。{?count}共有 {count} 筆測資有這個問題。{/count}"
+cause = "這一題要求輸出的空白與換行完全一致。{?hidden}這是隱藏測資，所以不會顯示輸出內容，但可以確定文字本身是對的。{/hidden}{?also_hidden}另外還有 {also_hidden} 筆隱藏測資也有同樣的問題。{/also_hidden}"
+next_steps = [
+  "{?hidden}對照題目的輸出範例，逐一檢查每個空白和換行。{/hidden}{!hidden}在比較區中，注意標示出來的空白（·）和換行（↵）符號。{/hidden}",
+  "檢查 printf 裡的空白和 `\\n` 是否跟題目要求一致。",
+  "{?hidden}隱藏測資的資料筆數可能和公開測資不同，例如只有一筆或非常多筆；確認這些情況下空白和換行仍然正確。{/hidden}",
+]
 hints = ["常見的問題：最後一個數字後面多了空白，或是少了最後的換行 `\\n`。"]
 
 [rules."judge.system_error"]

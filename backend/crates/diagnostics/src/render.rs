@@ -121,7 +121,8 @@ fn render_one(f: &Finding, ctx: &RenderContext<'_>) -> Card {
         Precision::Near => non_empty(tvar("precision.near")),
         Precision::Approximate => non_empty(tvar("precision.approximate")),
     };
-    let hidden_note = f.test.as_ref().filter(|t| t.hidden).map(|_| tvar("hidden_test"));
+    // Rules that set `hidden` word the hidden-test case themselves.
+    let hidden_note = f.test.as_ref().filter(|t| t.hidden && !f.vars.contains_key("hidden")).map(|_| tvar("hidden_test"));
     let what = match hidden_note {
         Some(n) if !n.is_empty() => format!("{}\n\n{}", text.what, n),
         _ => text.what,

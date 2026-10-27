@@ -56,8 +56,14 @@ pub(crate) fn run(b: &mut Builder<'_>, runs: &[RunObservation]) {
     let warning_lines = (!warning_lines.is_empty()).then(|| warning_lines.join("、"));
     let while_scanf_line = b.has("lint.while_scanf_no_compare").and_then(|d| d.line());
 
-    // One card per kind of problem; remember how many tests hit it.
+    // A public test failing for any reason means the public set did not pass.
+    let mut public = runs.iter().filter(|o| !o.test.hidden).peekable();
+    let public_passed = public.peek().is_some() && public.all(|o| o.status == RunStatus::Ok && o.answer_correct == Some(true));
+
+    // One card per kind of problem; remember how many tests hit it and how
+    // many of those were hidden.
     let mut drafts: Vec<FindingDraft> = vec![];
+    let mut hidden_counts: Vec<u32> = vec![];
     for o in runs {
         let (rule, cat, conf) = match o.status {
             RunStatus::Signaled if o.signal == Some(SIGSEGV) => ("run.segfault", Category::Runtime, Confidence::Possible),
@@ -75,7 +81,9 @@ pub(crate) fn run(b: &mut Builder<'_>, runs: &[RunObservation]) {
             RunStatus::SandboxError => ("judge.system_error", Category::System, Confidence::Confirmed),
             _ => continue,
         };
-        if let Some(existing) = drafts.iter_mut().find(|d| d.rule == rule) {
+        if let Some(i) = drafts.iter().position(|d| d.rule == rule) {
+            hidden_counts[i] += u32::from(o.test.hidden);
+            let existing = &mut drafts[i];
             let n: u32 = existing.vars.get("count").and_then(|c| c.parse().ok()).unwrap_or(1) + 1;
             existing.vars.insert("count".into(), n.to_string());
             existing.raw.push(sandbox_raw(o, describe(o)));
@@ -96,6 +104,25 @@ pub(crate) fn run(b: &mut Builder<'_>, runs: &[RunObservation]) {
             _ => f,
         };
         drafts.push(f);
+        hidden_counts.push(u32::from(o.test.hidden));
+    }
+    for (d, hidden) in drafts.iter_mut().zip(hidden_counts) {
+        let first_hidden = d.test.as_ref().is_some_and(|t| t.hidden);
+        match d.rule.as_str() {
+            "judge.wrong_answer" | "judge.whitespace_only" => {
+                // The card shows the first failing test; say when hidden tests failed too.
+                if !first_hidden && hidden > 0 {
+                    d.vars.insert("also_hidden".into(), hidden.to_string());
+                }
+                if first_hidden && public_passed {
+                    d.vars.insert("public_passed".into(), "1".into());
+                }
+            }
+            "run.time_limit" if public_passed => {
+                d.vars.insert("public_passed".into(), "1".into());
+            }
+            _ => {}
+        }
     }
     for d in drafts {
         b.push(d);
