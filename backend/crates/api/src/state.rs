@@ -51,6 +51,7 @@ pub struct Inner {
     pub runner: RunnerClient,
     pub config: ArcSwap<ConfigSnapshot>,
     pub limiter: RateLimiter,
+    pub playground: crate::routes::playground::Gate,
     pub judge_notify: Notify,
     pub judge_health: RwLock<(JudgeHealth, Option<chrono::DateTime<chrono::Utc>>)>,
 }

@@ -31,6 +31,7 @@ use crate::state::AppState;
         (name = "auth", description = "Login, logout, current user, password"),
         (name = "student", description = "What students see: sets, problems, drafts, progress, leaderboard"),
         (name = "submissions", description = "Run / Submit and results with teaching cards"),
+        (name = "playground", description = "Free-form C: compile and run any program, with teaching cards"),
         (name = "admin: problems", description = "Problem bank with immutable revisions"),
         (name = "admin: problem sets", description = "Ordered sets of bank problems; active set; leaderboard rounds"),
         (name = "admin: import/export", description = "JSON import (cycu-cal.import/v1) with dry-run"),
@@ -60,6 +61,7 @@ pub fn api_router() -> OpenApiRouter<AppState> {
             .merge(routes::student::router())
             .merge(routes::leaderboard::router())
             .merge(routes::submissions::router())
+            .merge(routes::playground::router())
             .merge(routes::admin_problems::router())
             .merge(routes::admin_sets::router())
             .merge(routes::admin_students::router())
