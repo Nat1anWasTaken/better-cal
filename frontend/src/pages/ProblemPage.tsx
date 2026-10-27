@@ -72,7 +72,7 @@ function Statement({ p }: { p: ProblemView }) {
         <p className="flex gap-1.5">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
           <span>
-            「執行」會用 {p.public_tests.length} 筆公開測資（或你的自訂輸入）；「提交」會再加上 {p.hidden_test_count} 筆隱藏測資正式評測。
+            「執行」會用 {p.public_tests.length} 筆公開測資（或你的自訂輸入）；{p.hidden_test_count > 0 ? `「提交」會再加上 ${p.hidden_test_count} 筆隱藏測資正式評測。` : '「提交」會用同樣的公開測資正式評測。'}
           </span>
         </p>
         <p className="pl-5.5 text-muted-foreground">{p.compare_description}</p>
