@@ -27,6 +27,8 @@ const SCOPES: Array<{ id: string; label: string }> = [
   { id: 'settings:write', label: '修改全站設定、讀取操作紀錄' },
 ]
 
+const OPENAPI_URL = `${window.location.origin}/api/v1/openapi.json`
+
 export function TokensPage() {
   const qc = useQueryClient()
   const q = useQuery({ queryKey: ['tokens'], queryFn: () => api.get<TokenInfo[]>('/admin/tokens') })
@@ -58,7 +60,16 @@ export function TokensPage() {
   })
   return (
     <Page wide>
-      <PageHeader title="API token" description="給 Agent 或腳本使用，不需要保存你的密碼。只勾選需要的權限；token 只會顯示一次，伺服器不保存明文。用法：Authorization: Bearer <token>。" />
+      <PageHeader
+        title="API token"
+        description="給 Agent 或腳本使用，不需要保存你的密碼。只勾選需要的權限；token 只會顯示一次，伺服器不保存明文。用法：Authorization: Bearer <token>。API 規格見 OpenAPI 文件。"
+        actions={
+          <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(OPENAPI_URL).then(() => toast.success('已複製 OpenAPI 網址'))}>
+            <Copy aria-hidden />
+            複製 OpenAPI 網址
+          </Button>
+        }
+      />
       <div className="space-y-6">
         {created && (
           <div role="status" className="space-y-2 rounded-lg border border-warning/30 bg-warning-soft p-4">
