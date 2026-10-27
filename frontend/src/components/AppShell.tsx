@@ -1,4 +1,4 @@
-import { BookOpenText, LayoutDashboard, LogOut, Monitor, Moon, Sun, UserRound } from 'lucide-react'
+import { LayoutDashboard, LogOut, Monitor, Moon, Sun, UserRound } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router'
 
 import { SystemBanner } from '@/components/Banners'
@@ -98,7 +98,6 @@ export function AppShell() {
           <Brand />
           <nav aria-label="主要導覽" className="flex items-center gap-0.5">
             <NavLink to="/" end className={navClass}>
-              <BookOpenText aria-hidden className="mr-1 inline size-4" />
               題目集
             </NavLink>
             <NavLink to="/me/submissions" className={navClass}>
