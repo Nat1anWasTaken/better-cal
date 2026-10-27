@@ -92,6 +92,7 @@ specs! {
     "judge.whitespace_only" => ["count", "hidden"] @ 80,
     "judge.system_error" => [] @ 1000,
     "compile.timeout" => [] @ 150,
+    "compile.unexplained" => [] @ 95,
     // Honest fallbacks for anything without a dedicated rule
     "fallback.compile_error" => ["message"] @ 95,
     "fallback.warning" => ["message", "option"] @ 20,

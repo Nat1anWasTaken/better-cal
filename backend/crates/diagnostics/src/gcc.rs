@@ -9,11 +9,20 @@ pub struct Pos {
     #[serde(default)]
     pub file: String,
     pub line: u32,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "column")]
     pub column: u32,
     /// 1-based column in "display" units (what an editor shows).
-    #[serde(rename = "display-column", default)]
+    #[serde(rename = "display-column", default, deserialize_with = "opt_column")]
     pub display_column: Option<u32>,
+}
+
+/// GCC reports column -1 when it has no column (e.g. "at end of input").
+fn opt_column<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<u32>, D::Error> {
+    Ok(Option::<i64>::deserialize(d)?.and_then(|c| u32::try_from(c).ok()))
+}
+
+fn column<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
+    opt_column(d).map(Option::unwrap_or_default)
 }
 
 impl Pos {
@@ -97,11 +106,12 @@ impl Diag {
     }
 }
 
-/// Parses the JSON array. Unknown fields are ignored; a malformed document
-/// yields no diagnostics (the caller still sees `compile.success == false`
-/// and falls back to an honest generic card).
+/// Parses the JSON array. Unknown fields are ignored and an entry that does
+/// not fit the schema is skipped on its own; a malformed document yields no
+/// diagnostics (the caller still sees `compile.success == false` and falls
+/// back to an honest generic card).
 pub fn parse(value: &serde_json::Value) -> Vec<Diag> {
-    let diags: Vec<Diag> = serde_json::from_value(value.clone()).unwrap_or_default();
+    let diags: Vec<Diag> = value.as_array().map(|a| a.iter().filter_map(|v| serde_json::from_value(v.clone()).ok()).collect()).unwrap_or_default();
     // Top-level notes that just repeat a sibling's child note are noise.
     let mut out: Vec<Diag> = Vec::with_capacity(diags.len());
     for d in diags {
@@ -134,6 +144,19 @@ mod tests {
         assert_eq!(d[0].line(), Some(8));
         assert_eq!(d[0].children[0].message, "declared here");
         assert!(d[0].effective_error());
+    }
+
+    #[test]
+    fn negative_column_does_not_drop_the_document() {
+        let json = serde_json::json!([
+            {"kind": "error", "message": "a", "locations": [{"caret": {"file": "main.c", "line": 8, "column": 12, "display-column": 12}}]},
+            {"kind": "error", "message": "expected '{' at end of input", "locations": [{"caret": {"file": "main.c", "line": 16, "column": -1, "display-column": -1}}]},
+            {"kind": "error", "message": "not a diagnostic", "locations": "oops"},
+        ]);
+        let d = parse(&json);
+        assert_eq!(d.len(), 2);
+        assert_eq!(d[1].line(), Some(16));
+        assert_eq!(d[1].caret().unwrap().col(), 0);
     }
 
     #[test]

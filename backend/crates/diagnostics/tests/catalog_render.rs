@@ -174,6 +174,21 @@ fn system_error_is_primary_and_not_blamed_on_student() {
 }
 
 #[test]
+fn failed_compile_without_readable_diagnostics_still_gets_a_card() {
+    let compile = CompileResult {
+        success: false,
+        exit_code: Some(1),
+        timed_out: false,
+        diagnostics_json: serde_json::json!({"not": "an array"}),
+        stderr_text: String::new(),
+    };
+    let a = analyze_src("int main(void) { return 0; }\n", &compile, &[]);
+    assert_eq!(a.findings.len(), 1);
+    assert_eq!(a.findings[0].rule, "compile.unexplained");
+    assert!(a.findings[0].primary);
+}
+
+#[test]
 fn custom_rule_matches_unknown_diagnostic_as_guess() {
     let rule = CustomRule {
         id: "custom.break_outside".into(),

@@ -138,6 +138,21 @@ pub(crate) fn run(b: &mut Builder<'_>, diags: &[Diag], link: &[LinkIssue], compi
     }
 
     linker(&mut cx);
+
+    // Never leave a failed compile without a card (e.g. a driver crash or
+    // output we could not parse): show the compiler's own words instead.
+    if !compile.success && !cx.b.drafts.iter().any(|d| d.severity == Severity::Error) {
+        let mut raw: Vec<RawDiagnostic> = diags.iter().flat_map(Diag::to_raw).collect();
+        raw.extend(compile.stderr_text.lines().filter(|l| !l.trim().is_empty()).map(|l| RawDiagnostic {
+            origin: RawOrigin::Compiler,
+            kind: "error".into(),
+            message: l.to_string(),
+            option: None,
+            line: None,
+            column: None,
+        }));
+        cx.b.push(FindingDraft::new("compile.unexplained", Category::CompileError, Severity::Error, Confidence::Confirmed).raw(raw));
+    }
 }
 
 /// Full-width punctuation from Chinese input methods. This is checked on the
