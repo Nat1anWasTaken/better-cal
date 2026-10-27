@@ -1,5 +1,5 @@
 //! Sandbox behaviour of the real judge-runner (isolate + GCC 12).
-//! Requires a running runner: RUNNER_URL / RUNNER_TOKEN (see docs/testing.md).
+//! Requires a running runner: RUNNER_URL / RUNNER_TOKEN.
 
 use std::time::Duration;
 
