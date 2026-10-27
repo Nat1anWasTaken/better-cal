@@ -155,3 +155,25 @@ fill_in 題目的學生端只能送出 `blanks`。固定程式碼一律由伺服
 - `PUT /admin/settings`
 
 說明見 [diagnostics.md](diagnostics.md) 與 OpenAPI 文件。
+
+## 9. 排行榜（輪次）
+
+排行以「輪」為單位，同時只會有一輪進行中。開始新一輪最方便的方式，是在設為目前啟用時一起開始：
+
+```sh
+# 啟用 week-3，結束進行中的一輪並開始新的一輪（title 省略時用題目集名稱）
+curl -sS "${H[@]}" -X PUT $API/admin/site/active-problem-set \
+  --data '{"problem_set":"week-3","start_round":{"title":"第 3 週挑戰"}}'
+```
+
+- `POST /admin/rounds/{id}/freeze`：凍結。學生只看得到凍結當下的排名，之後的提交顯示為「?」；擁有者一直看到即時結果。
+- `POST /admin/rounds/{id}/reveal`：揭曉（解除凍結）。
+- `POST /admin/rounds/{id}/end`：結束。之後的提交不再計入。
+- 學生端：`GET /leaderboard`（進行中的一輪）、`GET /rounds`、`GET /rounds/{id}/leaderboard`。
+
+計分規則（`ccal_core::leaderboard`）：
+
+- 只計算這一輪題目集內的題目，以及這一輪開始到結束之間的「提交」（不含執行、自訂測試）。這一輪之前通過的題目要重新提交才算。管理者認列不計入排行。
+- 先比通過題數，再比罰時。罰時 = 每題從這一輪開始到第一次通過的分鐘數 + 通過前每次錯誤提交 20 分鐘。編譯失敗不算錯誤。三者都相同時名次並列。
+- 只列出這一輪有提交過的學生。有效設定 `leaderboard: false` 的學生（可在全站、組別或個人設定）看不到排行，也不會被列出。
+- 徽章：`first_solve`（首殺：本輪第一位通過該題）、`no_hints`（通過前沒有在本輪展開過該題的提示）。依設定 `auto_reveal_hints` 自動顯示的提示不會被記錄，因此不影響 `no_hints`。之後可能新增其他種類，用戶端遇到未知的 `kind` 應直接忽略或原樣顯示。
