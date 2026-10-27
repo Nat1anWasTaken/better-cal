@@ -295,7 +295,7 @@ export function ProblemPage() {
       {submission ? (
         <SubmissionResult submission={submission} onJump={onJump} onRevealHint={revealHint} onRejudge={rejudge} timedOut={timedOut} />
       ) : (
-        <div className="space-y-2 pt-6 text-muted-foreground">
+        <div className="space-y-2 text-muted-foreground">
           <p>按「執行」用公開測資檢查你的程式，結果和說明會出現在這裡。</p>
           <p className="text-sm">如果有錯誤，系統會告訴你從哪裡看起，並一步一步給提示。</p>
         </div>
@@ -325,18 +325,22 @@ export function ProblemPage() {
       )}
       {desktop ? (
         <ResizablePanelGroup orientation="horizontal" className="min-h-0 flex-1">
-          <ResizablePanel defaultSize="30%" minSize="18%">
+          <ResizablePanel defaultSize="45%" minSize="25%">
             <div className="h-full overflow-y-auto">
               <Statement p={p} />
             </div>
           </ResizablePanel>
           <ResizableHandle withHandle aria-label="調整題目欄寬度" />
-          <ResizablePanel defaultSize="40%" minSize="25%">
-            {editorPane}
-          </ResizablePanel>
-          <ResizableHandle withHandle aria-label="調整結果欄寬度" />
-          <ResizablePanel defaultSize="30%" minSize="20%">
-            {resultPane}
+          <ResizablePanel defaultSize="55%" minSize="30%">
+            <ResizablePanelGroup orientation="vertical">
+              <ResizablePanel defaultSize="65%" minSize="25%">
+                {editorPane}
+              </ResizablePanel>
+              <ResizableHandle withHandle aria-label="調整結果區高度" />
+              <ResizablePanel defaultSize="35%" minSize="15%">
+                {resultPane}
+              </ResizablePanel>
+            </ResizablePanelGroup>
           </ResizablePanel>
         </ResizablePanelGroup>
       ) : (
