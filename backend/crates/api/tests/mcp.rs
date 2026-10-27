@@ -142,6 +142,10 @@ async fn oauth_flow_scoped_tools_and_revocation() {
     let r = raw(&app, "GET", "/.well-known/oauth-authorization-server", &[], None).await;
     assert_eq!(r.body["token_endpoint"], "http://app.test/oauth/token");
     assert_eq!(r.body["code_challenge_methods_supported"], json!(["S256"]));
+    for alias in ["/.well-known/openid-configuration", "/.well-known/oauth-authorization-server/mcp", "/.well-known/openid-configuration/mcp"] {
+        assert_eq!(raw(&app, "GET", alias, &[], None).await.body["issuer"], "http://app.test", "{alias}");
+    }
+    assert_eq!(raw(&app, "GET", "/.well-known/nope", &[], None).await.status, StatusCode::NOT_FOUND);
 
     let client_id = register(&app).await;
     let request = authorize(&app, &client_id, "problems:read problems:write publish").await;

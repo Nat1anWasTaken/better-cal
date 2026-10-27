@@ -61,6 +61,12 @@ pub fn router() -> Router<AppState> {
         .route("/.well-known/oauth-protected-resource/mcp", get(protected_resource))
         .route("/.well-known/oauth-authorization-server", get(authorization_server))
         .route("/.well-known/openid-configuration", get(authorization_server))
+        // Some clients insert the resource path when probing (RFC 8414 §3.1 style).
+        .route("/.well-known/oauth-authorization-server/mcp", get(authorization_server))
+        .route("/.well-known/openid-configuration/mcp", get(authorization_server))
+        .route("/mcp/.well-known/openid-configuration", get(authorization_server))
+        // Anything else under /.well-known is a real 404, not the SPA's index.html.
+        .route("/.well-known/{*rest}", get(|| async { StatusCode::NOT_FOUND }))
         .route("/oauth/register", post(register))
         .route("/oauth/authorize", get(authorize))
         .route("/oauth/token", post(token))
