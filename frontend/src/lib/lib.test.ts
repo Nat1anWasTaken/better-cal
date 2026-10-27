@@ -3,10 +3,11 @@ import { describe, expect, it } from 'vitest'
 import type { FeedbackCard, Segment } from '@/api/types'
 
 import { initialSave, needsSave, saveLabel, saveReducer } from './autosave'
-import { groupCards } from './cards'
+import { cardsToDiagnostics, groupCards } from './cards'
 import { diffSummary, renderDiffLine, showWhitespace } from './diff'
 import { errorsByPointer, errorsUnder } from './errors'
 import { applyEdit, buildDoc, changeAllowed, extractBlanks, fixedRanges } from './fillin'
+import { runStatusInfo } from './format'
 import { DEFAULT_PREFERENCES, editorOptions, monacoTheme } from './preferences'
 
 describe('diff rendering', () => {
@@ -150,6 +151,29 @@ describe('card grouping', () => {
     expect(g.errors.map((c) => c.finding_id)).toEqual([3])
     expect(g.warnings.map((c) => c.finding_id)).toEqual([4])
     expect(g.results.map((c) => c.finding_id)).toEqual([5])
+  })
+
+  it('marks code only for cards with a location that are not knock-on errors', () => {
+    const span = { line: 4, column: 14, end_line: 4, end_column: 15 }
+    const d = cardsToDiagnostics([
+      card({ finding_id: 1, span, title: '少了 `;`' }),
+      card({ finding_id: 2, span, maybe_cascade_of: 1 }),
+      card({ finding_id: 3, severity: 'warning' }),
+      card({ finding_id: 4, span, severity: 'info' }),
+    ])
+    expect(d).toEqual([
+      { line: 4, column: 14, endLine: 4, endColumn: 15, severity: 'error', message: '少了 ;' },
+      { line: 4, column: 14, endLine: 4, endColumn: 15, severity: 'info', message: 't' },
+    ])
+  })
+})
+
+describe('playground run status', () => {
+  it('labels each outcome and shows the exit code', () => {
+    expect(runStatusInfo('ok')).toEqual({ label: '執行完成', tone: 'success' })
+    expect(runStatusInfo('non_zero_exit', 3).label).toBe('結束代碼不是 0（3）')
+    expect(runStatusInfo('time_limit').tone).toBe('error')
+    expect(runStatusInfo('something_new')).toEqual({ label: 'something_new', tone: 'neutral' })
   })
 })
 
