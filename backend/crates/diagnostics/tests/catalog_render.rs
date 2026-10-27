@@ -306,3 +306,57 @@ fn priority_adjustment_changes_primary_warning() {
     });
     assert_eq!(a.findings.iter().find(|f| f.primary).unwrap().rule, "warn.unused_variable");
 }
+
+fn wrong(number: u32, hidden: bool) -> RunObservation {
+    let mut r = run(number, hidden, RunStatus::Ok);
+    r.answer_correct = Some(false);
+    r
+}
+
+fn cards_for(runs: &[RunObservation]) -> Vec<diagnostics::Card> {
+    let a = analyze_src("int main(void){return 0;}\n", &compile_ok(), runs);
+    let cat = Catalog::builtin();
+    render(&a.findings, &RenderContext { catalog: &cat, builtin: &cat, learned: &learned(&[]) })
+}
+
+#[test]
+fn hidden_wrong_answer_explains_once_and_notes_public_passed() {
+    let cards = cards_for(&[run(1, false, RunStatus::Ok), wrong(2, true)]);
+    let card = cards.iter().find(|c| c.rule == "judge.wrong_answer").unwrap();
+    let all = format!("{}{}", card.what, card.cause.as_deref().unwrap_or(""));
+    assert_eq!(all.matches("隱藏測資").count(), 2, "hidden explanation repeated: {all}");
+    assert!(all.contains("公開測資全部答對"), "{all}");
+}
+
+#[test]
+fn hidden_wrong_answer_without_public_pass_uses_generic_cause() {
+    let cards = cards_for(&[wrong(1, true), run(2, false, RunStatus::TimeLimit)]);
+    let card = cards.iter().find(|c| c.rule == "judge.wrong_answer").unwrap();
+    assert!(!card.cause.as_deref().unwrap().contains("公開測資全部答對"));
+}
+
+#[test]
+fn public_wrong_answer_mentions_hidden_failures_too() {
+    let cards = cards_for(&[wrong(1, false), wrong(2, true), wrong(3, true)]);
+    let card = cards.iter().find(|c| c.rule == "judge.wrong_answer").unwrap();
+    assert!(card.cause.as_deref().unwrap().contains("還有 2 筆隱藏測資"), "{:?}", card.cause);
+}
+
+#[test]
+fn hidden_whitespace_only_does_not_point_at_comparison() {
+    let mut ws = wrong(2, true);
+    ws.whitespace_only_difference = true;
+    let cards = cards_for(&[run(1, false, RunStatus::Ok), ws]);
+    let card = cards.iter().find(|c| c.rule == "judge.whitespace_only").unwrap();
+    assert!(card.next_steps.iter().all(|s| !s.contains("比較區")), "{:?}", card.next_steps);
+    assert!(card.cause.as_deref().unwrap().contains("隱藏測資"));
+}
+
+#[test]
+fn hidden_only_timeout_suggests_slow_method() {
+    let mut tle = run(2, true, RunStatus::TimeLimit);
+    tle.answer_correct = None;
+    let cards = cards_for(&[run(1, false, RunStatus::Ok), tle]);
+    let card = cards.iter().find(|c| c.rule == "run.time_limit").unwrap();
+    assert!(card.cause.as_deref().unwrap().contains("只有隱藏測資超時"), "{:?}", card.cause);
+}
