@@ -8,6 +8,7 @@ import { AccountPage } from '@/pages/Account'
 import { HomePage } from '@/pages/Home'
 import { LoginPage } from '@/pages/Login'
 import { MyProgressPage } from '@/pages/MyProgress'
+import { OAuthConsentPage } from '@/pages/OAuthConsent'
 import { SetPage } from '@/pages/SetPage'
 
 const AdminApp = lazy(() => import('@/pages/admin/AdminApp'))
@@ -50,6 +51,7 @@ export function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<RequireAuth />}>
         <Route path="/admin/*" element={<RequireOwner />} />
+        <Route path="/oauth/consent" element={<OAuthConsentPage />} />
         <Route element={<AppShell />}>
           <Route index element={<HomePage />} />
           <Route path="/account" element={<AccountRoute />} />

@@ -177,3 +177,14 @@ describe('preferences', () => {
     })
   })
 })
+
+describe('scopes', async () => {
+  const { knownScopes, scopeLabel } = await import('./scopes')
+  it('keeps only known scopes, in display order', () => {
+    expect(knownScopes(['publish', 'bogus', 'problems:read'])).toEqual(['problems:read', 'publish'])
+  })
+  it('falls back to the raw id for unknown scopes', () => {
+    expect(scopeLabel('problems:read')).toBe('讀取題目、題目集與匯出')
+    expect(scopeLabel('x:y')).toBe('x:y')
+  })
+})

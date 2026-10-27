@@ -265,6 +265,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** MCP server status and the tools it offers. */
+        get: operations["mcp_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/overview": {
         parameters: {
             query?: never;
@@ -719,7 +736,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** API tokens you created (secrets are never shown again). */
+        /** API tokens you created and apps connected over MCP (secrets are never shown again). */
         get: operations["list_tokens"];
         put?: never;
         /**
@@ -743,7 +760,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Revoke a token immediately. */
+        /** Revoke a token, or disconnect an MCP app, immediately. */
         delete: operations["revoke_token"];
         options?: never;
         head?: never;
@@ -1067,6 +1084,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/oauth/requests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A pending authorization request, for the consent page. */
+        get: operations["get_request"];
+        put?: never;
+        /**
+         * Approve or deny an authorization request. Approving replaces any earlier
+         *     connection of the same app, so reconnecting never piles up grants.
+         */
+        post: operations["decide"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/problem-sets": {
         parameters: {
             query?: never;
@@ -1351,6 +1389,30 @@ export interface components {
             id: number;
             target: string;
             via_token?: string | null;
+        };
+        AuthDecision: {
+            approve: boolean;
+            /** @description Scopes to grant (may differ from what the client asked for). Required when approving. */
+            scopes?: components["schemas"]["Scope"][];
+        };
+        AuthDecisionResult: {
+            /** @description Navigate the browser here (the client's redirect URI with a code or an error). */
+            redirect_to: string;
+        };
+        AuthRequestView: {
+            client_id: string;
+            client_name: string;
+            /** @description `dcr` (registered itself) or `cimd` (identified by a metadata URL). */
+            client_source: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** Format: uuid */
+            id: string;
+            /** @description Where the browser goes after approval; show it so the owner can spot impostors. */
+            redirect_host: string;
+            redirect_uri: string;
+            requested_scopes: string[];
+            resource: string;
         };
         Badge: {
             /** @description `first_solve` or `no_hints`; more kinds may be added. */
@@ -1714,6 +1776,25 @@ export interface components {
             /** Format: uuid */
             user_id: string;
             username: string;
+        };
+        McpStatus: {
+            /** @description The `mcp_enabled` site setting. */
+            enabled: boolean;
+            /** @description `PUBLIC_URL`; MCP cannot work without it. */
+            public_url?: string | null;
+            /** Format: int64 */
+            registered_clients: number;
+            /** @description The URL to paste into Claude / ChatGPT (`{PUBLIC_URL}/mcp`). */
+            server_url?: string | null;
+            tools: components["schemas"]["McpToolInfo"][];
+        };
+        McpToolInfo: {
+            /** @description A hand-written workflow tool (the rest mirror REST operations). */
+            curated: boolean;
+            name: string;
+            read_only: boolean;
+            scopes: string[];
+            title: string;
         };
         Me: {
             /** @description Send as `X-CSRF-Token` on every non-GET request made with the session cookie. */
@@ -2309,6 +2390,11 @@ export interface components {
              *     }
              */
             default_policy: components["schemas"]["PolicyPatch"];
+            /**
+             * @description Accept MCP connections at `/mcp` (also requires `PUBLIC_URL`).
+             * @default false
+             */
+            mcp_enabled: boolean;
             /** @default CYCU-CAL 程式讀書會 */
             site_name: string;
         };
@@ -2501,13 +2587,23 @@ export interface components {
             };
             required_keys: string[];
         };
+        TokenClient: {
+            id: string;
+            name: string;
+            redirect_hosts: string[];
+            /** @description `dcr` (registered itself) or `cimd` (identified by a metadata URL). */
+            source: string;
+        };
         TokenInfo: {
+            client?: components["schemas"]["TokenClient"] | null;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
             expires_at?: string | null;
             /** Format: uuid */
             id: string;
+            /** @description `api` (a token you created) or `oauth` (an app connected over MCP). */
+            kind: string;
             /** Format: date-time */
             last_used_at?: string | null;
             name: string;
@@ -3130,6 +3226,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    mcp_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpStatus"];
                 };
             };
         };
@@ -4674,6 +4789,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_SubmissionSummary"];
+                };
+            };
+        };
+    };
+    get_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthRequestView"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    decide: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthDecision"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthDecisionResult"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
                 };
             };
         };

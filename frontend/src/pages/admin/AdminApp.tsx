@@ -77,7 +77,7 @@ const NAV = [
     group: '系統',
     items: [
       { to: '/admin/settings', label: '全站設定', icon: Settings },
-      { to: '/admin/tokens', label: 'API token', icon: KeyRound },
+      { to: '/admin/tokens', label: 'API 與 MCP', icon: KeyRound },
       { to: '/admin/audit', label: '操作紀錄', icon: ScrollText },
     ],
   },

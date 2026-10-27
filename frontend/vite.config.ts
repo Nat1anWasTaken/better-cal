@@ -19,6 +19,12 @@ export default defineConfig({
   build: { chunkSizeWarningLimit: 4500 },
   server: {
     port: 5173,
-    proxy: { '/api': { target: process.env.API_TARGET ?? 'http://localhost:18080', changeOrigin: false } },
+    // /oauth/consent is an SPA page; the other OAuth endpoints and /mcp are the API's.
+    proxy: Object.fromEntries(
+      ['/api', '/mcp', '/.well-known', '/oauth/authorize', '/oauth/token', '/oauth/register', '/oauth/revoke'].map((p) => [
+        p,
+        { target: process.env.API_TARGET ?? 'http://localhost:18080', changeOrigin: false },
+      ]),
+    ),
   },
 })
