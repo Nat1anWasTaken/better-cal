@@ -65,6 +65,7 @@ services:
       RUNNER_URL: http://runner:7070
       RUNNER_TOKEN: ${RUNNER_TOKEN}
       PUBLIC_ORIGINS: ${PUBLIC_ORIGINS:-}
+      PUBLIC_URL: ${PUBLIC_URL:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       JUDGE_WORKERS: ${RUNNER_CONCURRENCY:-2}
       STATIC_DIR: /app/web
