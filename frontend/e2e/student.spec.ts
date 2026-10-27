@@ -20,6 +20,7 @@ test('student: run broken code, read the card, reveal a hint, jump, fix and pass
   await page.getByRole('link', { name: /第 1 週：輸入與輸出/ }).click()
   await page.getByRole('link', { name: /A \+ B/ }).click()
   await expect(page.getByRole('heading', { name: 'A + B' })).toBeVisible()
+  await expect(page.getByText('第 2 / 4 題')).toBeVisible()
 
   await setCode(page, BROKEN)
   await page.getByTestId('run-button').click()
@@ -51,6 +52,11 @@ test('student: run broken code, read the card, reveal a hint, jump, fix and pass
   await expect(final).toHaveAttribute('data-verdict', 'accepted')
   await expect(final.getByText('全部測資都通過了')).toBeVisible()
   await expect(final.getByText('隱藏測資 #3')).toBeVisible()
+
+  // The accepted banner offers the next unfinished problem in the set, and the page starts fresh there.
+  await final.getByTestId('next-problem').click()
+  await expect(page).not.toHaveURL(/a-plus-b/)
+  await expect(page.getByTestId('submission-result')).toHaveCount(0)
 })
 
 test('student: fill-in problem keeps fixed code read-only and passes with blanks', async ({ page }) => {
