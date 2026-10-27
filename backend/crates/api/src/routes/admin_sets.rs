@@ -16,6 +16,7 @@ use utoipa_axum::routes;
 use uuid::Uuid;
 
 use super::admin_problems::save_revision;
+use super::leaderboard::{ROUND_SELECT, Round, find_round};
 use super::{TAG_IMPORT, TAG_SETS};
 use crate::auth::{Principal, Scope};
 use crate::error::{ApiError, ApiResult, JsonBody};
@@ -30,6 +31,10 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(publish_set))
         .routes(routes!(unpublish_set))
         .routes(routes!(set_active))
+        .routes(routes!(list_rounds))
+        .routes(routes!(end_round))
+        .routes(routes!(freeze_round))
+        .routes(routes!(reveal_round))
         .routes(routes!(import))
         .routes(routes!(export))
 }
@@ -347,6 +352,17 @@ async fn unpublish_set(State(st): State<AppState>, p: Principal, Path(set): Path
 pub struct ActiveSetInput {
     /// Id or slug of a published set.
     pub problem_set: String,
+    /// Also end the open leaderboard round and start a new one on this set.
+    #[serde(default)]
+    pub start_round: Option<StartRound>,
+}
+
+#[derive(Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct StartRound {
+    /// Defaults to the set's title.
+    #[serde(default)]
+    pub title: Option<String>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -354,10 +370,13 @@ pub struct ActiveSet {
     pub active_set_id: Uuid,
     pub slug: String,
     pub config_version: i64,
+    /// The round started by this request, if any.
+    pub round_id: Option<Uuid>,
 }
 
 /// Make a published set the site's active (default) set. Takes effect
 /// immediately; open editors are told about the switch and keep their code.
+/// With `start_round`, the open leaderboard round ends and a new one starts.
 #[utoipa::path(put, path = "/admin/site/active-problem-set", tag = TAG_SETS, request_body = ActiveSetInput,
     responses((status = 200, body = ActiveSet), (status = 422, body = crate::error::ProblemDetails)), security(("token" = ["publish"]), ("session" = [])))]
 async fn set_active(State(st): State<AppState>, p: Principal, JsonBody(req): JsonBody<ActiveSetInput>) -> ApiResult<Json<ActiveSet>> {
@@ -366,14 +385,75 @@ async fn set_active(State(st): State<AppState>, p: Principal, JsonBody(req): Jso
     if s.status != "published" {
         return Err(ApiError::validation(vec![FieldError::new("/problem_set", "not_published", "只能啟用已發布的題目集")]));
     }
-    sqlx::query("UPDATE site_config SET active_set_id = $1 WHERE id = 1").bind(s.id).execute(&st.db).await?;
+    let title = req.start_round.as_ref().map(|r| r.title.as_deref().map(str::trim).filter(|t| !t.is_empty()).unwrap_or(&s.title).to_string());
+    let mut tx = st.db.begin().await?;
+    sqlx::query("UPDATE site_config SET active_set_id = $1 WHERE id = 1").bind(s.id).execute(&mut *tx).await?;
     sqlx::query("INSERT INTO config_revisions (active_set_id, settings, created_by) SELECT active_set_id, settings, $1 FROM site_config WHERE id = 1")
         .bind(p.user_id)
-        .execute(&st.db)
+        .execute(&mut *tx)
         .await?;
+    let round_id = match &title {
+        Some(title) => {
+            let id = Uuid::now_v7();
+            sqlx::query("UPDATE rounds SET ended_at = now() WHERE ended_at IS NULL").execute(&mut *tx).await?;
+            sqlx::query("INSERT INTO rounds (id, set_id, title, created_by) VALUES ($1, $2, $3, $4)")
+                .bind(id)
+                .bind(s.id)
+                .bind(title)
+                .bind(p.user_id)
+                .execute(&mut *tx)
+                .await?;
+            Some(id)
+        }
+        None => None,
+    };
+    tx.commit().await?;
     st.config_changed().await?;
     repo::audit(&st, &p, "site.active_set", &s.slug, serde_json::json!({})).await;
-    Ok(Json(ActiveSet { active_set_id: s.id, slug: s.slug, config_version: st.snapshot().version }))
+    if let (Some(id), Some(title)) = (round_id, &title) {
+        repo::audit(&st, &p, "round.start", &id.to_string(), serde_json::json!({ "set": s.slug, "title": title })).await;
+    }
+    Ok(Json(ActiveSet { active_set_id: s.id, slug: s.slug, config_version: st.snapshot().version, round_id }))
+}
+
+/// Every leaderboard round, newest first.
+#[utoipa::path(get, path = "/admin/rounds", tag = TAG_SETS, responses((status = 200, body = Vec<Round>)), security(("token" = ["publish"]), ("session" = [])))]
+async fn list_rounds(State(st): State<AppState>, p: Principal) -> ApiResult<Json<Vec<Round>>> {
+    p.require(Scope::Publish)?;
+    Ok(Json(sqlx::query_as(&format!("{ROUND_SELECT} ORDER BY r.started_at DESC")).fetch_all(&st.db).await?))
+}
+
+async fn update_round(st: &AppState, p: &Principal, id: Uuid, sql: &str, action: &str) -> ApiResult<Json<Round>> {
+    p.require(Scope::Publish)?;
+    let round = find_round(st, id).await?;
+    if round.ended_at.is_some() && action != "round.reveal" {
+        return Err(ApiError::conflict("round_ended", "這一輪已經結束"));
+    }
+    sqlx::query(sql).bind(id).execute(&st.db).await?;
+    repo::audit(st, p, action, &id.to_string(), serde_json::json!({})).await;
+    Ok(Json(find_round(st, id).await?))
+}
+
+/// End a round. Submits after this no longer count; a frozen board stays
+/// frozen until revealed.
+#[utoipa::path(post, path = "/admin/rounds/{id}/end", tag = TAG_SETS, params(("id" = Uuid, Path)),
+    responses((status = 200, body = Round), (status = 409, body = crate::error::ProblemDetails)), security(("token" = ["publish"]), ("session" = [])))]
+async fn end_round(State(st): State<AppState>, p: Principal, Path(id): Path<Uuid>) -> ApiResult<Json<Round>> {
+    update_round(&st, &p, id, "UPDATE rounds SET ended_at = now() WHERE id = $1", "round.end").await
+}
+
+/// Freeze the board: students see results only up to now.
+#[utoipa::path(post, path = "/admin/rounds/{id}/freeze", tag = TAG_SETS, params(("id" = Uuid, Path)),
+    responses((status = 200, body = Round), (status = 409, body = crate::error::ProblemDetails)), security(("token" = ["publish"]), ("session" = [])))]
+async fn freeze_round(State(st): State<AppState>, p: Principal, Path(id): Path<Uuid>) -> ApiResult<Json<Round>> {
+    update_round(&st, &p, id, "UPDATE rounds SET frozen_at = COALESCE(frozen_at, now()) WHERE id = $1", "round.freeze").await
+}
+
+/// Reveal a frozen board to students.
+#[utoipa::path(post, path = "/admin/rounds/{id}/reveal", tag = TAG_SETS, params(("id" = Uuid, Path)),
+    responses((status = 200, body = Round)), security(("token" = ["publish"]), ("session" = [])))]
+async fn reveal_round(State(st): State<AppState>, p: Principal, Path(id): Path<Uuid>) -> ApiResult<Json<Round>> {
+    update_round(&st, &p, id, "UPDATE rounds SET frozen_at = NULL WHERE id = $1", "round.reveal").await
 }
 
 #[derive(Deserialize, utoipa::IntoParams)]

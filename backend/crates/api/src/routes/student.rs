@@ -56,22 +56,32 @@ pub struct SiteInfo {
     pub default_set_id: Option<Uuid>,
     /// Bumps whenever online settings change; clients poll it to detect switches.
     pub config_version: i64,
+    /// This user may view leaderboards.
+    pub leaderboard: bool,
+    /// The leaderboard round in progress, if any.
+    pub open_round_id: Option<Uuid>,
 }
 
 /// Site name, announcement and which problem set to open by default.
 #[utoipa::path(get, path = "/site", tag = TAG_STUDENT, responses((status = 200, body = SiteInfo)))]
 async fn site(State(st): State<AppState>, MaybePrincipal(p): MaybePrincipal) -> ApiResult<Json<SiteInfo>> {
     let snap = st.snapshot();
-    let default_set_id = match &p {
-        Some(p) => repo::policy_for(&st, p.user_id).await?.default_set_id.value,
-        None => snap.active_set_id,
+    let (default_set_id, leaderboard) = match &p {
+        Some(p) => {
+            let policy = repo::policy_for(&st, p.user_id).await?;
+            (policy.default_set_id.value, p.is_owner() || policy.leaderboard.value)
+        }
+        None => (snap.active_set_id, false),
     };
+    let open_round_id = if leaderboard { super::leaderboard::open_round(&st).await?.map(|r| r.id) } else { None };
     Ok(Json(SiteInfo {
         site_name: snap.settings.site_name.clone(),
         announcement_md: if p.is_some() { snap.settings.announcement_md.clone() } else { String::new() },
         active_set_id: snap.active_set_id,
         default_set_id,
         config_version: snap.version,
+        leaderboard,
+        open_round_id,
     }))
 }
 

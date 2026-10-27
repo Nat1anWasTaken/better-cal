@@ -4,6 +4,7 @@ pub mod admin_sets;
 pub mod admin_students;
 pub mod admin_system;
 pub mod auth;
+pub mod leaderboard;
 pub mod student;
 pub mod submissions;
 

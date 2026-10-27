@@ -4,8 +4,8 @@
     "title": "CYCU-CAL Judge API",
     "description": "C 語言教學與自動評測平台 API。\n\n- 學生使用瀏覽器 session（HttpOnly cookie）；所有非 GET 請求需帶 `X-CSRF-Token`（由 `GET /api/v1/auth/me` 取得）。\n- Agent / 腳本使用擁有者建立的 API token：`Authorization: Bearer ccal_…`，權限依 scope 限制。\n- 錯誤一律為 RFC 9457 `application/problem+json`，欄位問題在 `errors[].pointer`（JSON Pointer）。\n- 建立類請求可帶 `Idempotency-Key` 以安全重試。\n- 詳細流程見 docs/api-guide.md。",
     "license": {
-      "name": "MIT",
-      "identifier": "MIT"
+      "name": "AGPL-3.0-or-later",
+      "identifier": "AGPL-3.0-or-later"
     },
     "version": "1.0.0"
   },
@@ -2069,6 +2069,180 @@
         ]
       }
     },
+    "/api/v1/admin/rounds": {
+      "get": {
+        "tags": [
+          "admin: problem sets"
+        ],
+        "summary": "Every leaderboard round, newest first.",
+        "operationId": "list_rounds",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Round"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "publish"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/rounds/{id}/end": {
+      "post": {
+        "tags": [
+          "admin: problem sets"
+        ],
+        "summary": "End a round. Submits after this no longer count; a frozen board stays\nfrozen until revealed.",
+        "operationId": "end_round",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Round"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "publish"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/rounds/{id}/freeze": {
+      "post": {
+        "tags": [
+          "admin: problem sets"
+        ],
+        "summary": "Freeze the board: students see results only up to now.",
+        "operationId": "freeze_round",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Round"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "publish"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/rounds/{id}/reveal": {
+      "post": {
+        "tags": [
+          "admin: problem sets"
+        ],
+        "summary": "Reveal a frozen board to students.",
+        "operationId": "reveal_round",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Round"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "publish"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/settings": {
       "get": {
         "tags": [
@@ -2151,7 +2325,7 @@
         "tags": [
           "admin: problem sets"
         ],
-        "summary": "Make a published set the site's active (default) set. Takes effect\nimmediately; open editors are told about the switch and keep their code.",
+        "summary": "Make a published set the site's active (default) set. Takes effect\nimmediately; open editors are told about the switch and keep their code.\nWith `start_round`, the open leaderboard round ends and a new one starts.",
         "operationId": "set_active",
         "requestBody": {
           "content": {
@@ -3227,6 +3401,35 @@
         }
       }
     },
+    "/api/v1/leaderboard": {
+      "get": {
+        "tags": [
+          "student"
+        ],
+        "summary": "Ranking of the round in progress.",
+        "operationId": "current_leaderboard",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Leaderboard"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/drafts/{problem_id}": {
       "get": {
         "tags": [
@@ -3507,6 +3710,69 @@
         }
       }
     },
+    "/api/v1/rounds": {
+      "get": {
+        "tags": [
+          "student"
+        ],
+        "summary": "Rounds you can view, newest first.",
+        "operationId": "list_rounds",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Round"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rounds/{id}/leaderboard": {
+      "get": {
+        "tags": [
+          "student"
+        ],
+        "summary": "Ranking of one round, open or ended.",
+        "operationId": "round_leaderboard",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Leaderboard"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/site": {
       "get": {
         "tags": [
@@ -3768,6 +4034,14 @@
             "type": "integer",
             "format": "int64"
           },
+          "round_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The round started by this request, if any."
+          },
           "slug": {
             "type": "string"
           }
@@ -3782,6 +4056,17 @@
           "problem_set": {
             "type": "string",
             "description": "Id or slug of a published set."
+          },
+          "start_round": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StartRound",
+                "description": "Also end the open leaderboard round and start a new one on this set."
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -4013,6 +4298,23 @@
           }
         }
       },
+      "Badge": {
+        "type": "object",
+        "required": [
+          "kind",
+          "problem_id"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "`first_solve` or `no_hints`; more kinds may be added."
+          },
+          "problem_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "BatchCreate": {
         "type": "object",
         "required": [
@@ -4061,6 +4363,45 @@
             "type": "boolean"
           }
         }
+      },
+      "BoardProblem": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "position"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "BoardRow": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Standing"
+          },
+          {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            }
+          }
+        ]
       },
       "CardView": {
         "type": "object",
@@ -4230,6 +4571,44 @@
           "version": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "Cell": {
+        "type": "object",
+        "required": [
+          "problem_id",
+          "solved",
+          "wrong_tries",
+          "pending"
+        ],
+        "properties": {
+          "minutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Minutes from the round start to the first accept."
+          },
+          "pending": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Submits made after the freeze whose results are hidden.",
+            "minimum": 0
+          },
+          "problem_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "solved": {
+            "type": "boolean"
+          },
+          "wrong_tries": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Wrong submits (compile errors excluded) before the first accept, or\nin total when unsolved.",
+            "minimum": 0
           }
         }
       },
@@ -4669,7 +5048,8 @@
           "max_hint_levels",
           "raw_expanded",
           "runs_per_minute",
-          "submits_per_minute"
+          "submits_per_minute",
+          "leaderboard"
         ],
         "properties": {
           "auto_reveal_hints": {
@@ -4684,6 +5064,9 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          "leaderboard": {
+            "$ref": "#/components/schemas/Sourced_bool"
           },
           "learned_concepts": {
             "type": "array",
@@ -4992,6 +5375,43 @@
           "down",
           "unknown"
         ]
+      },
+      "Leaderboard": {
+        "type": "object",
+        "required": [
+          "round",
+          "problems",
+          "rows",
+          "frozen",
+          "penalty_per_wrong"
+        ],
+        "properties": {
+          "frozen": {
+            "type": "boolean",
+            "description": "Results after `round.frozen_at` are hidden from this viewer."
+          },
+          "penalty_per_wrong": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Minutes added per wrong try."
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoardProblem"
+            }
+          },
+          "round": {
+            "$ref": "#/components/schemas/Round"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoardRow"
+            },
+            "description": "Only students who submitted during the round, best first."
+          }
+        }
       },
       "LoginRequest": {
         "type": "object",
@@ -5575,6 +5995,13 @@
               "format": "uuid"
             },
             "description": "Additional sets (including unlisted ones) visible at this level."
+          },
+          "leaderboard": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Show the leaderboard and list this student on it."
           },
           "learned_concepts": {
             "type": [
@@ -6298,6 +6725,56 @@
           "owner"
         ]
       },
+      "Round": {
+        "type": "object",
+        "required": [
+          "id",
+          "set_id",
+          "set_slug",
+          "set_title",
+          "title",
+          "started_at"
+        ],
+        "properties": {
+          "ended_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "`None` while the round is open."
+          },
+          "frozen_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "While set, students see the board as of this moment."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "set_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "set_slug": {
+            "type": "string"
+          },
+          "set_title": {
+            "type": "string"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
       "RuleEditor": {
         "type": "object",
         "required": [
@@ -6720,7 +7197,8 @@
         "required": [
           "site_name",
           "announcement_md",
-          "config_version"
+          "config_version",
+          "leaderboard"
         ],
         "properties": {
           "active_set_id": {
@@ -6746,6 +7224,18 @@
             ],
             "format": "uuid",
             "description": "The set this user should land on (cohort/student settings may differ)."
+          },
+          "leaderboard": {
+            "type": "boolean",
+            "description": "This user may view leaderboards."
+          },
+          "open_round_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The leaderboard round in progress, if any."
           },
           "site_name": {
             "type": "string"
@@ -6778,6 +7268,7 @@
             "description": "Site-level policy (lowest precedence; cohorts and students override it).",
             "default": {
               "auto_reveal_hints": 0,
+              "leaderboard": true,
               "learned_concepts": [
                 "io",
                 "variables"
@@ -6921,6 +7412,64 @@
             "minimum": 0
           }
         }
+      },
+      "Standing": {
+        "type": "object",
+        "required": [
+          "user_id",
+          "rank",
+          "solved",
+          "penalty",
+          "cells",
+          "badges"
+        ],
+        "properties": {
+          "badges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Badge"
+            }
+          },
+          "cells": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "penalty": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Minutes: time to each accept plus `PENALTY_PER_WRONG` per wrong try."
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int32",
+            "description": "1-based; rows tied on solved, penalty and last accept share a rank.",
+            "minimum": 0
+          },
+          "solved": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "StartRound": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Defaults to the set's title."
+          }
+        },
+        "additionalProperties": false
       },
       "SubmissionKind": {
         "type": "string",
@@ -7661,7 +8210,7 @@
     },
     {
       "name": "student",
-      "description": "What students see: sets, problems, drafts, progress"
+      "description": "What students see: sets, problems, drafts, progress, leaderboard"
     },
     {
       "name": "submissions",
@@ -7673,7 +8222,7 @@
     },
     {
       "name": "admin: problem sets",
-      "description": "Ordered sets of bank problems; active set"
+      "description": "Ordered sets of bank problems; active set; leaderboard rounds"
     },
     {
       "name": "admin: import/export",

@@ -29,10 +29,10 @@ use crate::state::AppState;
     modifiers(&SecurityAddon),
     tags(
         (name = "auth", description = "Login, logout, current user, password"),
-        (name = "student", description = "What students see: sets, problems, drafts, progress"),
+        (name = "student", description = "What students see: sets, problems, drafts, progress, leaderboard"),
         (name = "submissions", description = "Run / Submit and results with teaching cards"),
         (name = "admin: problems", description = "Problem bank with immutable revisions"),
-        (name = "admin: problem sets", description = "Ordered sets of bank problems; active set"),
+        (name = "admin: problem sets", description = "Ordered sets of bank problems; active set; leaderboard rounds"),
         (name = "admin: import/export", description = "JSON import (cycu-cal.import/v1) with dry-run"),
         (name = "admin: teaching text", description = "Online editing of diagnostic explanations"),
         (name = "admin: students", description = "Accounts, cohorts, overrides, progress"),
@@ -57,6 +57,7 @@ pub fn api_router() -> OpenApiRouter<AppState> {
         OpenApiRouter::new()
             .merge(routes::auth::router())
             .merge(routes::student::router())
+            .merge(routes::leaderboard::router())
             .merge(routes::submissions::router())
             .merge(routes::admin_problems::router())
             .merge(routes::admin_sets::router())
