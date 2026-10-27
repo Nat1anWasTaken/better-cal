@@ -8,6 +8,8 @@ pub mod catalog_store;
 pub mod config;
 pub mod error;
 pub mod judge;
+pub mod mcp;
+pub mod oauth;
 pub mod preferences;
 pub mod repo;
 pub mod routes;

@@ -20,6 +20,18 @@ pub fn new_api_token() -> String {
     format!("ccal_{}", random_token(32))
 }
 
+/// OAuth access token (`ccalo_`), accepted only at `/mcp`.
+pub const OAUTH_ACCESS_PREFIX: &str = "ccalo_";
+
+pub fn new_oauth_access() -> String {
+    format!("{OAUTH_ACCESS_PREFIX}{}", random_token(32))
+}
+
+/// OAuth refresh token (`ccalr_`), accepted only at the token endpoint.
+pub fn new_oauth_refresh() -> String {
+    format!("ccalr_{}", random_token(32))
+}
+
 pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
     if a.len() != b.len() {
         return false;

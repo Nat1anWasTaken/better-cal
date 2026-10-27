@@ -24,6 +24,7 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(get_settings, put_settings))
         .routes(routes!(list_tokens, create_token))
         .routes(routes!(revoke_token))
+        .routes(routes!(mcp_status))
         .routes(routes!(audit_log))
         .routes(routes!(list_submissions))
         .routes(routes!(get_submission))
@@ -71,32 +72,79 @@ pub struct TokenInfo {
     pub id: Uuid,
     pub name: String,
     pub scopes: Vec<String>,
+    /// `api` (a token you created) or `oauth` (an app connected over MCP).
+    pub kind: String,
+    /// The connected app, for `oauth` connections.
+    pub client: Option<TokenClient>,
     pub created_at: DateTime<Utc>,
     pub expires_at: Option<DateTime<Utc>>,
     pub revoked_at: Option<DateTime<Utc>>,
     pub last_used_at: Option<DateTime<Utc>>,
 }
 
-/// API tokens you created (secrets are never shown again).
+#[derive(Serialize, ToSchema)]
+pub struct TokenClient {
+    pub id: String,
+    pub name: String,
+    /// `dcr` (registered itself) or `cimd` (identified by a metadata URL).
+    pub source: String,
+    pub redirect_hosts: Vec<String>,
+}
+
+#[derive(sqlx::FromRow)]
+struct TokenRow {
+    id: Uuid,
+    name: String,
+    scopes: Vec<String>,
+    kind: String,
+    created_at: DateTime<Utc>,
+    expires_at: Option<DateTime<Utc>>,
+    revoked_at: Option<DateTime<Utc>>,
+    last_used_at: Option<DateTime<Utc>>,
+    client_id: Option<String>,
+    client_name: Option<String>,
+    client_source: Option<String>,
+    redirect_uris: Option<Vec<String>>,
+}
+
+/// API tokens you created and apps connected over MCP (secrets are never shown again).
 #[utoipa::path(get, path = "/admin/tokens", tag = TAG_SYSTEM, responses((status = 200, body = Vec<TokenInfo>)), security(("session" = [])))]
 async fn list_tokens(State(st): State<AppState>, p: Principal) -> ApiResult<Json<Vec<TokenInfo>>> {
     p.require_owner_session()?;
-    let rows: Vec<(Uuid, String, Vec<String>, DateTime<Utc>, Option<DateTime<Utc>>, Option<DateTime<Utc>>, Option<DateTime<Utc>>)> = sqlx::query_as(
-        "SELECT id, name, scopes, created_at, expires_at, revoked_at, last_used_at FROM api_tokens WHERE owner_id = $1 ORDER BY created_at DESC",
+    let rows: Vec<TokenRow> = sqlx::query_as(
+        "SELECT t.id, t.name, t.scopes, t.kind, t.created_at, t.expires_at, t.revoked_at, t.last_used_at,
+                c.id AS client_id, c.name AS client_name, c.source AS client_source, c.redirect_uris
+         FROM api_tokens t LEFT JOIN oauth_clients c ON c.id = t.client_id WHERE t.owner_id = $1 ORDER BY t.created_at DESC",
     )
     .bind(p.user_id)
     .fetch_all(&st.db)
     .await?;
     Ok(Json(
         rows.into_iter()
-            .map(|(id, name, scopes, created_at, expires_at, revoked_at, last_used_at)| TokenInfo {
-                id,
-                name,
-                scopes,
-                created_at,
-                expires_at,
-                revoked_at,
-                last_used_at,
+            .map(|r| TokenInfo {
+                client: r.client_id.map(|id| TokenClient {
+                    id,
+                    name: r.client_name.unwrap_or_default(),
+                    source: r.client_source.unwrap_or_default(),
+                    redirect_hosts: {
+                        let mut h: Vec<String> = r
+                            .redirect_uris
+                            .unwrap_or_default()
+                            .iter()
+                            .filter_map(|u| reqwest::Url::parse(u).ok().and_then(|u| u.host_str().map(str::to_string)))
+                            .collect();
+                        h.dedup();
+                        h
+                    },
+                }),
+                id: r.id,
+                name: r.name,
+                scopes: r.scopes,
+                kind: r.kind,
+                created_at: r.created_at,
+                expires_at: r.expires_at,
+                revoked_at: r.revoked_at,
+                last_used_at: r.last_used_at,
             })
             .collect(),
     ))
@@ -159,7 +207,7 @@ async fn create_token(State(st): State<AppState>, p: Principal, JsonBody(req): J
     Ok((StatusCode::CREATED, Json(CreatedToken { info, token: secret })))
 }
 
-/// Revoke a token immediately.
+/// Revoke a token, or disconnect an MCP app, immediately.
 #[utoipa::path(delete, path = "/admin/tokens/{id}", tag = TAG_SYSTEM, params(("id" = Uuid, Path)), responses((status = 204)), security(("session" = [])))]
 async fn revoke_token(State(st): State<AppState>, p: Principal, Path(id): Path<Uuid>) -> ApiResult<StatusCode> {
     p.require_owner_session()?;
@@ -204,6 +252,53 @@ async fn audit_log(State(st): State<AppState>, p: Principal, Query(pp): Query<re
     let items =
         rows.into_iter().map(|(id, at, actor, via_token, action, target, detail)| AuditEntry { id, at, actor, via_token, action, target, detail }).collect();
     Ok(Json(repo::page(items, limit, offset)))
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct McpStatus {
+    /// The `mcp_enabled` site setting.
+    pub enabled: bool,
+    /// `PUBLIC_URL`; MCP cannot work without it.
+    pub public_url: Option<String>,
+    /// The URL to paste into Claude / ChatGPT (`{PUBLIC_URL}/mcp`).
+    pub server_url: Option<String>,
+    pub tools: Vec<McpToolInfo>,
+    pub registered_clients: i64,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct McpToolInfo {
+    pub name: String,
+    pub title: String,
+    pub scopes: Vec<String>,
+    pub read_only: bool,
+    /// A hand-written workflow tool (the rest mirror REST operations).
+    pub curated: bool,
+}
+
+/// MCP server status and the tools it offers.
+#[utoipa::path(get, path = "/admin/mcp", tag = TAG_SYSTEM, responses((status = 200, body = McpStatus)), security(("session" = [])))]
+async fn mcp_status(State(st): State<AppState>, p: Principal) -> ApiResult<Json<McpStatus>> {
+    p.require_owner_session()?;
+    let names = |s: &[Scope]| s.iter().map(|s| s.as_str().to_string()).collect::<Vec<_>>();
+    let mut tools: Vec<McpToolInfo> = crate::mcp::curated::CURATED
+        .iter()
+        .map(|t| McpToolInfo { name: t.name.into(), title: t.title.into(), scopes: names(t.scopes), read_only: false, curated: true })
+        .collect();
+    tools.extend(crate::mcp::tools::CATALOG.iter().map(|t| McpToolInfo {
+        name: t.name.clone(),
+        title: t.title.clone(),
+        scopes: names(&t.scopes),
+        read_only: t.read_only(),
+        curated: false,
+    }));
+    Ok(Json(McpStatus {
+        enabled: st.snapshot().settings.mcp_enabled,
+        public_url: st.cfg.public_url.clone(),
+        server_url: st.cfg.mcp_url(),
+        tools,
+        registered_clients: sqlx::query_scalar("SELECT count(*) FROM oauth_clients").fetch_one(&st.db).await?,
+    }))
 }
 
 #[derive(Serialize, ToSchema)]

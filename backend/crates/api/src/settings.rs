@@ -17,6 +17,8 @@ pub struct SiteSettings {
     pub default_compare_mode: CompareMode,
     /// Site-level policy (lowest precedence; cohorts and students override it).
     pub default_policy: PolicyPatch,
+    /// Accept MCP connections at `/mcp` (also requires `PUBLIC_URL`).
+    pub mcp_enabled: bool,
 }
 
 impl Default for SiteSettings {
@@ -27,6 +29,7 @@ impl Default for SiteSettings {
             default_limits: ProblemLimits::default(),
             default_compare_mode: CompareMode::default(),
             default_policy: ccal_core::policy::site_defaults(),
+            mcp_enabled: false,
         }
     }
 }

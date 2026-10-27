@@ -5,6 +5,7 @@ pub mod admin_students;
 pub mod admin_system;
 pub mod auth;
 pub mod leaderboard;
+pub mod oauth_consent;
 pub mod student;
 pub mod submissions;
 
@@ -17,3 +18,4 @@ pub const TAG_IMPORT: &str = "admin: import/export";
 pub const TAG_CATALOG: &str = "admin: teaching text";
 pub const TAG_STUDENTS: &str = "admin: students";
 pub const TAG_SYSTEM: &str = "admin: system";
+pub const TAG_OAUTH: &str = "oauth";

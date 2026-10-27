@@ -939,6 +939,31 @@
         ]
       }
     },
+    "/api/v1/admin/mcp": {
+      "get": {
+        "tags": [
+          "admin: system"
+        ],
+        "summary": "MCP server status and the tools it offers.",
+        "operationId": "mcp_status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpStatus"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/overview": {
       "get": {
         "tags": [
@@ -2576,7 +2601,7 @@
         "tags": [
           "admin: system"
         ],
-        "summary": "API tokens you created (secrets are never shown again).",
+        "summary": "API tokens you created and apps connected over MCP (secrets are never shown again).",
         "operationId": "list_tokens",
         "responses": {
           "200": {
@@ -2646,7 +2671,7 @@
         "tags": [
           "admin: system"
         ],
-        "summary": "Revoke a token immediately.",
+        "summary": "Revoke a token, or disconnect an MCP app, immediately.",
         "operationId": "revoke_token",
         "parameters": [
           {
@@ -3646,6 +3671,113 @@
         }
       }
     },
+    "/api/v1/oauth/requests/{id}": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "A pending authorization request, for the consent page.",
+        "operationId": "get_request",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthRequestView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "Approve or deny an authorization request. Approving replaces any earlier\nconnection of the same app, so reconnecting never piles up grants.",
+        "operationId": "decide",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthDecisionResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
     "/api/v1/problem-sets": {
       "get": {
         "tags": [
@@ -4334,6 +4466,87 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "AuthDecision": {
+        "type": "object",
+        "required": [
+          "approve"
+        ],
+        "properties": {
+          "approve": {
+            "type": "boolean"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Scope"
+            },
+            "description": "Scopes to grant (may differ from what the client asked for). Required when approving."
+          }
+        },
+        "additionalProperties": false
+      },
+      "AuthDecisionResult": {
+        "type": "object",
+        "required": [
+          "redirect_to"
+        ],
+        "properties": {
+          "redirect_to": {
+            "type": "string",
+            "description": "Navigate the browser here (the client's redirect URI with a code or an error)."
+          }
+        }
+      },
+      "AuthRequestView": {
+        "type": "object",
+        "required": [
+          "id",
+          "client_id",
+          "client_name",
+          "client_source",
+          "redirect_uri",
+          "redirect_host",
+          "requested_scopes",
+          "resource",
+          "expires_at"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "client_name": {
+            "type": "string"
+          },
+          "client_source": {
+            "type": "string",
+            "description": "`dcr` (registered itself) or `cimd` (identified by a metadata URL)."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "redirect_host": {
+            "type": "string",
+            "description": "Where the browser goes after approval; show it so the owner can spot impostors."
+          },
+          "redirect_uri": {
+            "type": "string"
+          },
+          "requested_scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "resource": {
+            "type": "string"
           }
         }
       },
@@ -5541,6 +5754,75 @@
             "format": "uuid"
           },
           "username": {
+            "type": "string"
+          }
+        }
+      },
+      "McpStatus": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "tools",
+          "registered_clients"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "The `mcp_enabled` site setting."
+          },
+          "public_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`PUBLIC_URL`; MCP cannot work without it."
+          },
+          "registered_clients": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "server_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The URL to paste into Claude / ChatGPT (`{PUBLIC_URL}/mcp`)."
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/McpToolInfo"
+            }
+          }
+        }
+      },
+      "McpToolInfo": {
+        "type": "object",
+        "required": [
+          "name",
+          "title",
+          "scopes",
+          "read_only",
+          "curated"
+        ],
+        "properties": {
+          "curated": {
+            "type": "boolean",
+            "description": "A hand-written workflow tool (the rest mirror REST operations)."
+          },
+          "name": {
+            "type": "string"
+          },
+          "read_only": {
+            "type": "boolean"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
             "type": "string"
           }
         }
@@ -7342,6 +7624,11 @@
               "submits_per_minute": 5
             }
           },
+          "mcp_enabled": {
+            "type": "boolean",
+            "description": "Accept MCP connections at `/mcp` (also requires `PUBLIC_URL`).",
+            "default": false
+          },
           "site_name": {
             "type": "string",
             "default": "CYCU-CAL 程式讀書會"
@@ -8028,15 +8315,54 @@
           }
         }
       },
+      "TokenClient": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "source",
+          "redirect_hosts"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "redirect_hosts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source": {
+            "type": "string",
+            "description": "`dcr` (registered itself) or `cimd` (identified by a metadata URL)."
+          }
+        }
+      },
       "TokenInfo": {
         "type": "object",
         "required": [
           "id",
           "name",
           "scopes",
+          "kind",
           "created_at"
         ],
         "properties": {
+          "client": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TokenClient",
+                "description": "The connected app, for `oauth` connections."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -8051,6 +8377,10 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "description": "`api` (a token you created) or `oauth` (an app connected over MCP)."
           },
           "last_used_at": {
             "type": [
@@ -8346,7 +8676,11 @@
     },
     {
       "name": "admin: system",
-      "description": "Settings, API tokens, audit log, submissions"
+      "description": "Settings, API tokens, MCP, audit log, submissions"
+    },
+    {
+      "name": "oauth",
+      "description": "Owner consent for MCP clients (the OAuth protocol endpoints live under /oauth and /.well-known)"
     }
   ]
 }

@@ -75,7 +75,7 @@ fn session_cookie(st: &AppState, token: &str, max_age: i64) -> HeaderValue {
 /// Client address as reported by the reverse proxy (first X-Forwarded-For hop).
 /// A whole classroom behind one NAT shares this key, so the per-address limit
 /// is generous; the per-account limit is what slows down password guessing.
-fn client_ip(headers: &HeaderMap) -> String {
+pub(crate) fn client_ip(headers: &HeaderMap) -> String {
     headers.get("x-forwarded-for").and_then(|v| v.to_str().ok()).and_then(|v| v.split(',').next()).unwrap_or("direct").trim().to_string()
 }
 

@@ -22,8 +22,8 @@ serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 axum.workspace = true
-tower.workspace = true
-tower-http.workspace = true
+tower = { workspace = true, features = ["util"] }
+tower-http = { workspace = true, features = ["cors"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
@@ -35,7 +35,7 @@ rand = "0.8"
 sha2 = "0.10"
 hex = "0.4"
 base64 = "0.22"
-reqwest = { version = "0.12", default-features = false, features = ["json"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 utoipa = { version = "6", features = ["axum_extras", "uuid", "chrono"] }
 utoipa-scalar = { version = "0.4", features = ["axum"] }
 utoipa-axum = "0.3"

@@ -1,6 +1,6 @@
 use axum::Router;
 use axum::extract::Request;
-use axum::http::{HeaderValue, header};
+use axum::http::{HeaderName, HeaderValue, header};
 use axum::middleware::{self, Next};
 use axum::response::Response;
 use tower_http::services::{ServeDir, ServeFile};
@@ -36,7 +36,8 @@ use crate::state::AppState;
         (name = "admin: import/export", description = "JSON import (cycu-cal.import/v1) with dry-run"),
         (name = "admin: teaching text", description = "Online editing of diagnostic explanations"),
         (name = "admin: students", description = "Accounts, cohorts, overrides, progress"),
-        (name = "admin: system", description = "Settings, API tokens, audit log, submissions")
+        (name = "admin: system", description = "Settings, API tokens, MCP, audit log, submissions"),
+        (name = "oauth", description = "Owner consent for MCP clients (the OAuth protocol endpoints live under /oauth and /.well-known)")
     )
 )]
 pub struct ApiDoc;
@@ -63,7 +64,8 @@ pub fn api_router() -> OpenApiRouter<AppState> {
             .merge(routes::admin_sets::router())
             .merge(routes::admin_students::router())
             .merge(routes::admin_catalog::router())
-            .merge(routes::admin_system::router()),
+            .merge(routes::admin_system::router())
+            .merge(routes::oauth_consent::router()),
     )
 }
 
@@ -79,7 +81,7 @@ async fn security_headers(req: Request, next: Next) -> Response {
     h.insert("x-content-type-options", HeaderValue::from_static("nosniff"));
     h.insert("referrer-policy", HeaderValue::from_static("same-origin"));
     h.insert("x-frame-options", HeaderValue::from_static("DENY"));
-    if path.starts_with("/api/") {
+    if path.starts_with("/api/") || path.starts_with("/oauth/") || path == "/mcp" {
         h.entry(header::CACHE_CONTROL).or_insert(HeaderValue::from_static("no-store"));
     }
     if !path.starts_with("/api/docs") {
@@ -98,7 +100,23 @@ async fn api_not_found() -> ApiError {
 pub fn build(state: AppState) -> Router {
     let (router, api) = api_router().split_for_parts();
     let spec = api.clone();
+    // MCP tool calls run through the API router in-process.
+    let mcp_api = router.clone().with_state(state.clone());
+    // Machine-to-machine endpoints may be called from browser-based MCP
+    // clients (e.g. MCP Inspector). They never use cookies, so any origin is fine.
+    let cors = tower_http::cors::CorsLayer::new()
+        .allow_origin(tower_http::cors::Any)
+        .allow_methods([axum::http::Method::GET, axum::http::Method::POST])
+        .allow_headers([
+            header::AUTHORIZATION,
+            header::CONTENT_TYPE,
+            HeaderName::from_static("mcp-protocol-version"),
+            HeaderName::from_static("mcp-session-id"),
+        ])
+        .expose_headers([header::WWW_AUTHENTICATE]);
     let mut app = router
+        .merge(crate::oauth::router().layer(cors.clone()))
+        .merge(crate::mcp::router(mcp_api).layer(cors))
         .route("/api/v1/openapi.json", axum::routing::get(move || async move { axum::Json(spec.clone()) }))
         .merge(Scalar::with_url("/api/docs", api))
         .route("/api/{*rest}", axum::routing::any(api_not_found))

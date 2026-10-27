@@ -18,6 +18,9 @@ pub struct Config {
     /// Runner request timeout for one phase.
     pub runner_timeout: Duration,
     pub max_attempts: i32,
+    /// Canonical external origin (e.g. `https://cal.example.edu`). Required for
+    /// MCP: it is the OAuth issuer and `{public_url}/mcp` is the protected resource.
+    pub public_url: Option<String>,
 }
 
 fn env(key: &str) -> Option<String> {
@@ -40,6 +43,14 @@ impl Config {
             session_ttl: Duration::from_secs(env("SESSION_TTL_HOURS").and_then(|v| v.parse::<u64>().ok()).unwrap_or(24 * 14) * 3600),
             runner_timeout: Duration::from_secs(env("RUNNER_TIMEOUT_S").and_then(|v| v.parse().ok()).unwrap_or(90)),
             max_attempts: env("JUDGE_MAX_ATTEMPTS").and_then(|v| v.parse().ok()).unwrap_or(3),
+            public_url: env("PUBLIC_URL").map(|v| v.trim().trim_end_matches('/').to_string()),
         })
+    }
+}
+
+impl Config {
+    /// The MCP resource URL, when `PUBLIC_URL` is configured.
+    pub fn mcp_url(&self) -> Option<String> {
+        self.public_url.as_ref().map(|u| format!("{u}/mcp"))
     }
 }

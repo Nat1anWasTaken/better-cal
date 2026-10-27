@@ -99,6 +99,11 @@ impl Principal {
         Ok(())
     }
 
+    /// Whether an owner holds every scope in `scopes` (sessions hold all).
+    pub fn has_scopes(&self, scopes: &[Scope]) -> bool {
+        self.role == Role::Owner && (self.token_id.is_none() || scopes.iter().all(|s| self.token_scopes.contains(s)))
+    }
+
     /// Operations only an owner's browser session may perform (managing tokens).
     pub fn require_owner_session(&self) -> Result<(), ApiError> {
         if self.role != Role::Owner || self.token_id.is_some() {
@@ -168,33 +173,56 @@ impl FromRequestParts<AppState> for MaybePrincipal {
     }
 }
 
+/// Principal for an API token (`ccal_…`). OAuth grants have no `token_hash`,
+/// so OAuth access tokens never match here: they are only valid at `/mcp`.
+pub async fn api_token_principal(state: &AppState, token: &str) -> Result<Principal, ApiError> {
+    let row: Option<TokenRow> = sqlx::query_as(
+        "SELECT t.id, t.owner_id, t.scopes, u.role, u.disabled FROM api_tokens t JOIN users u ON u.id = t.owner_id
+         WHERE t.token_hash = $1 AND t.kind = 'api' AND t.revoked_at IS NULL AND (t.expires_at IS NULL OR t.expires_at > now())",
+    )
+    .bind(digest(token))
+    .fetch_optional(&state.db)
+    .await?;
+    token_row_principal(state, row).await
+}
+
+/// Principal for an OAuth access token (`ccalo_…`), acting through its grant.
+pub async fn oauth_access_principal(state: &AppState, token: &str) -> Result<Principal, ApiError> {
+    let row: Option<TokenRow> = sqlx::query_as(
+        "SELECT t.id, t.owner_id, t.scopes, u.role, u.disabled FROM oauth_tokens o
+           JOIN api_tokens t ON t.id = o.grant_id JOIN users u ON u.id = t.owner_id
+         WHERE o.token_hash = $1 AND o.kind = 'access' AND o.expires_at > now()
+           AND t.revoked_at IS NULL AND (t.expires_at IS NULL OR t.expires_at > now())",
+    )
+    .bind(digest(token))
+    .fetch_optional(&state.db)
+    .await?;
+    token_row_principal(state, row).await
+}
+
+async fn token_row_principal(state: &AppState, row: Option<TokenRow>) -> Result<Principal, ApiError> {
+    let row = row.ok_or_else(ApiError::unauthorized)?;
+    if row.disabled || row.role != "owner" {
+        return Err(ApiError::unauthorized());
+    }
+    // Best effort; not worth failing the request over.
+    let _ = sqlx::query("UPDATE api_tokens SET last_used_at = now() WHERE id = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '1 minute')")
+        .bind(row.id)
+        .execute(&state.db)
+        .await;
+    Ok(Principal {
+        user_id: row.owner_id,
+        role: Role::Owner,
+        token_id: Some(row.id),
+        token_scopes: row.scopes.iter().filter_map(|s| Scope::parse(s)).collect(),
+        session_hash: None,
+    })
+}
+
 async fn authenticate(parts: &Parts, state: &AppState) -> Result<Principal, ApiError> {
     if let Some(auth) = parts.headers.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok()) {
         let token = auth.strip_prefix("Bearer ").ok_or_else(ApiError::unauthorized)?.trim();
-        let row: Option<TokenRow> = sqlx::query_as(
-            "SELECT t.id, t.owner_id, t.scopes, u.role, u.disabled FROM api_tokens t JOIN users u ON u.id = t.owner_id
-             WHERE t.token_hash = $1 AND t.revoked_at IS NULL AND (t.expires_at IS NULL OR t.expires_at > now())",
-        )
-        .bind(digest(token))
-        .fetch_optional(&state.db)
-        .await?;
-        let row = row.ok_or_else(ApiError::unauthorized)?;
-        if row.disabled || row.role != "owner" {
-            return Err(ApiError::unauthorized());
-        }
-        // Best effort; not worth failing the request over.
-        let _ =
-            sqlx::query("UPDATE api_tokens SET last_used_at = now() WHERE id = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '1 minute')")
-                .bind(row.id)
-                .execute(&state.db)
-                .await;
-        return Ok(Principal {
-            user_id: row.owner_id,
-            role: Role::Owner,
-            token_id: Some(row.id),
-            token_scopes: row.scopes.iter().filter_map(|s| Scope::parse(s)).collect(),
-            session_hash: None,
-        });
+        return api_token_principal(state, token).await;
     }
 
     let token = cookie_value(parts, SESSION_COOKIE).ok_or_else(ApiError::unauthorized)?;

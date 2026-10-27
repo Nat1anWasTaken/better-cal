@@ -16,6 +16,8 @@ FROM rust:1.99-slim-bookworm AS rust-build
 # Keep peak memory bounded: at most two rustc processes at once.
 ENV CARGO_BUILD_JOBS=2 CARGO_TERM_COLOR=never
 WORKDIR /src
+# MCP serves a few docs as resources (include_str! ../../../../../docs from crates/api/src/mcp).
+COPY docs/*.md /docs/
 COPY backend/ ./
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target,id=ccal-target \
