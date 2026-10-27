@@ -1105,6 +1105,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/playground/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compile and run a program once with the real toolchain, and explain any
+         *     problems with teaching cards. There is no expected output, so only compile,
+         *     warning and runtime cards (crash, time/memory/output limit) can appear.
+         */
+        post: operations["run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/problem-sets": {
         parameters: {
             query?: never;
@@ -1656,6 +1677,7 @@ export interface components {
             /** @description Union of site, cohort and student concepts (problem/set concepts are added per request). */
             learned_concepts: string[];
             max_hint_levels: components["schemas"]["Sourced_Option_u8"];
+            playground: components["schemas"]["Sourced_bool"];
             raw_expanded: components["schemas"]["Sourced_bool"];
             runs_per_minute: components["schemas"]["Sourced_u32"];
             submits_per_minute: components["schemas"]["Sourced_u32"];
@@ -1933,6 +1955,48 @@ export interface components {
             /** @description Pass as `cursor` to get the next page; absent on the last page. */
             next_cursor?: string | null;
         };
+        PlaygroundLimits: {
+            /** Format: int32 */
+            memory_kb: number;
+            /** Format: int32 */
+            output_kb: number;
+            /** Format: int32 */
+            time_ms: number;
+        };
+        PlaygroundRequest: {
+            /** @description A complete C program (C17, compiled like submissions). */
+            source: string;
+            /** @description Standard input for the program. */
+            stdin?: string;
+        };
+        PlaygroundResult: {
+            auto_reveal_hints: number;
+            /**
+             * @description Teaching cards. `hints` holds every hint this user may see; show the
+             *     first `auto_reveal_hints` and reveal the rest on request.
+             */
+            cards: components["schemas"]["CardView"][];
+            compile_success: boolean;
+            limits: components["schemas"]["PlaygroundLimits"];
+            raw_expanded: boolean;
+            run?: components["schemas"]["PlaygroundRun"] | null;
+        };
+        PlaygroundRun: {
+            /** Format: int32 */
+            exit_code?: number | null;
+            /** Format: int32 */
+            memory_kb: number;
+            /** Format: int32 */
+            signal?: number | null;
+            /** @description `ok`, `non_zero_exit`, `signaled`, `time_limit`, `memory_limit`, `output_limit` or `sandbox_error`. */
+            status: string;
+            stderr: string;
+            stderr_truncated: boolean;
+            stdout: string;
+            stdout_truncated: boolean;
+            /** Format: int32 */
+            time_ms: number;
+        };
         /** @description Every field is optional; unset fields fall through to the next level. */
         PolicyPatch: {
             /**
@@ -1956,6 +2020,8 @@ export interface components {
              * @description Maximum hint levels a student may reveal (`None` = all).
              */
             max_hint_levels?: number | null;
+            /** @description Allow the free-form C playground. */
+            playground?: boolean | null;
             /** @description Expand the original compiler message by default. */
             raw_expanded?: boolean | null;
             /** Format: int32 */
@@ -2356,6 +2422,8 @@ export interface components {
              * @description The leaderboard round in progress, if any.
              */
             open_round_id?: string | null;
+            /** @description This user may use the C playground. */
+            playground: boolean;
             site_name: string;
         };
         SiteSettings: {
@@ -2384,6 +2452,7 @@ export interface components {
              *         "io",
              *         "variables"
              *       ],
+             *       "playground": true,
              *       "raw_expanded": false,
              *       "runs_per_minute": 10,
              *       "submits_per_minute": 5
@@ -4854,6 +4923,61 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaygroundRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaygroundResult"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
