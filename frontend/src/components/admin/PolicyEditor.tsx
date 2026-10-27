@@ -98,6 +98,18 @@ export function PolicyEditor({ value, onChange, errors = {}, level, idPrefix }: 
           </SelectContent>
         </Select>
       </Field>
+      <Field label="排行榜">
+        <Select value={value.leaderboard == null ? INHERIT : value.leaderboard ? 'on' : 'off'} onValueChange={(v) => set({ leaderboard: v === INHERIT ? null : v === 'on' })}>
+          <SelectTrigger className="w-72" aria-label="排行榜">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={INHERIT}>{level === 'site' ? '開啟（預設）' : '沿用上一層設定'}</SelectItem>
+            <SelectItem value="on">開啟：可以看排行榜，也會列在上面</SelectItem>
+            <SelectItem value="off">關閉：看不到排行榜，也不會被列出</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
     </div>
   )
 }

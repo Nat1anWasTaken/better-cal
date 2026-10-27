@@ -5,11 +5,13 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { ApiError, api, qs } from '@/api/client'
-import type { AdminSet, Page as PageT, ProblemSummary } from '@/api/types'
+import type { ActiveSet, AdminSet, Page as PageT, ProblemSummary } from '@/api/types'
 import { ConceptPicker, Field, SectionCard } from '@/components/admin/Field'
 import { ErrorState, FieldMessage, Loading, Page, PageHeader } from '@/components/Page'
 import { StatusPill } from '@/components/StatusPill'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
@@ -112,8 +114,7 @@ export function SetEditorPage() {
     },
   })
   const act = useMutation({
-    mutationFn: (kind: 'publish' | 'unpublish' | 'activate' | 'archive') => {
-      if (kind === 'activate') return api.put('/admin/site/active-problem-set', { problem_set: routeSlug })
+    mutationFn: (kind: 'publish' | 'unpublish' | 'archive') => {
       if (kind === 'archive') return api.del(`/admin/problem-sets/${routeSlug}`)
       return api.post(`/admin/problem-sets/${routeSlug}/${kind}`)
     },
@@ -121,7 +122,7 @@ export function SetEditorPage() {
       qc.invalidateQueries({ queryKey: ['admin-set', routeSlug] })
       qc.invalidateQueries({ queryKey: ['admin-sets'] })
       qc.invalidateQueries({ queryKey: ['site'] })
-      toast.success({ publish: '已發布', unpublish: '已改回草稿', activate: '已設為目前啟用的題目集，學生端會立即看到', archive: '已封存' }[kind])
+      toast.success({ publish: '已發布', unpublish: '已改回草稿', archive: '已封存' }[kind])
       if (kind === 'archive') nav('/admin/sets')
     },
     onError: (e) => {
@@ -183,10 +184,7 @@ export function SetEditorPage() {
                 改回草稿
               </Button>
             )}
-            <Button variant="outline" disabled={dirty || act.isPending || s.active || s.status !== 'published'} onClick={() => act.mutate('activate')} data-testid="activate-set">
-              <Star aria-hidden />
-              設為目前啟用
-            </Button>
+            <ActivateDialog slug={routeSlug} title={s.title} disabled={dirty || act.isPending || s.active || s.status !== 'published'} />
             <Button variant="ghost-destructive" disabled={act.isPending || s.active} onClick={() => window.confirm('封存這個題目集？題目本身不受影響。') && act.mutate('archive')}>
               <Trash2 aria-hidden />
               封存
@@ -258,5 +256,61 @@ export function SetEditorPage() {
         </SectionCard>
       </div>
     </Page>
+  )
+}
+
+/** Make the set active, optionally ending the open leaderboard round and starting a new one. */
+function ActivateDialog({ slug, title, disabled }: { slug: string; title: string; disabled: boolean }) {
+  const qc = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [startRound, setStartRound] = useState(true)
+  const [roundTitle, setRoundTitle] = useState('')
+  const m = useMutation({
+    mutationFn: () =>
+      api.put<ActiveSet>('/admin/site/active-problem-set', { problem_set: slug, start_round: startRound ? { title: roundTitle.trim() || null } : null }),
+    onSuccess: (r) => {
+      setOpen(false)
+      setRoundTitle('')
+      qc.invalidateQueries({ queryKey: ['admin-set', slug] })
+      qc.invalidateQueries({ queryKey: ['admin-sets'] })
+      qc.invalidateQueries({ queryKey: ['admin-rounds'] })
+      qc.invalidateQueries({ queryKey: ['site'] })
+      toast.success(r.round_id ? '已設為目前啟用，新一輪排行已開始' : '已設為目前啟用的題目集，學生端會立即看到')
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  })
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" disabled={disabled} data-testid="activate-set">
+          <Star aria-hidden />
+          設為目前啟用
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>設為目前啟用</DialogTitle>
+          <DialogDescription>學生進入平台時會預設看到「{title}」。</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="flex items-start gap-2">
+            <Checkbox id="start-round" checked={startRound} onCheckedChange={(v) => setStartRound(v === true)} />
+            <Label htmlFor="start-round" variant="option">
+              同時開始新一輪排行（結束目前進行中的一輪，罰時從現在開始計算）
+            </Label>
+          </div>
+          {startRound && (
+            <Field label="這一輪的名稱" htmlFor="round-title">
+              <Input id="round-title" value={roundTitle} placeholder={title} onChange={(e) => setRoundTitle(e.target.value)} />
+            </Field>
+          )}
+        </div>
+        <DialogFooter>
+          <Button onClick={() => m.mutate()} disabled={m.isPending}>
+            確定啟用
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

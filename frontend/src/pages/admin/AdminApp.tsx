@@ -11,6 +11,7 @@ import {
   ScrollText,
   Settings,
   Table2,
+  Trophy,
   Users,
   UsersRound,
 } from 'lucide-react'
@@ -34,6 +35,7 @@ import { OverviewPage } from './Overview'
 import { ProblemEditorPage } from './ProblemEditor'
 import { ProblemsPage } from './Problems'
 import { ProgressMatrixPage } from './ProgressMatrix'
+import { RoundsPage } from './Rounds'
 import { RuleEditorPage } from './RuleEditor'
 import { RuleStatsPage } from './RuleStats'
 import { SetEditorPage } from './SetEditor'
@@ -67,6 +69,7 @@ const NAV = [
       { to: '/admin/users', label: '學生帳號', icon: Users },
       { to: '/admin/cohorts', label: '組別', icon: UsersRound },
       { to: '/admin/progress', label: '進度表', icon: Table2 },
+      { to: '/admin/rounds', label: '排行輪次', icon: Trophy },
       { to: '/admin/submissions', label: '提交紀錄', icon: ClipboardList },
     ],
   },
@@ -170,6 +173,7 @@ export default function AdminApp() {
         <Route path="users/:id" element={<StudentDetailPage />} />
         <Route path="cohorts" element={<CohortsPage />} />
         <Route path="progress" element={<ProgressMatrixPage />} />
+        <Route path="rounds" element={<RoundsPage />} />
         <Route path="submissions" element={<AdminSubmissionsPage />} />
         <Route path="submissions/:id" element={<SubmissionDetailPage admin />} />
         <Route path="settings" element={<SettingsPage />} />

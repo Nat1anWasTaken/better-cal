@@ -45,6 +45,7 @@ function Effective({ v }: { v: PolicyView }) {
         {row('最多可展開的提示層數', e.max_hint_levels.value == null ? '不限制' : String(e.max_hint_levels.value), e.max_hint_levels.source)}
         {row('原始訊息', e.raw_expanded.value ? '預設展開' : '預設收合', e.raw_expanded.source)}
         {row('每分鐘執行／提交上限', `${e.runs_per_minute.value}／${e.submits_per_minute.value}`, e.runs_per_minute.source)}
+        {row('排行榜', e.leaderboard.value ? '開啟' : '關閉', e.leaderboard.source)}
       </tbody>
     </table>
   )
