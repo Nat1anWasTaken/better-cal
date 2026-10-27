@@ -28,7 +28,7 @@ scripts/cargo-capped.sh clippy --workspace --all-targets
 | `ccal-core` | 局部補寫的組裝與繞過檢查、輸出比對與差異、匯入格式驗證（pointer）、有效設定的優先順序 | — |
 | `ccal-api/tests/runner.rs` | 真實沙箱：AC、CE（JSON 診斷）、連結錯誤、segfault、SIGFPE、非 0 回傳、TLE（區分 CPU 與牆上時間）、MLE、OLE、沒有網路、不能 fork、上限截斷、錯誤的 token | runner |
 | `ccal-api/tests/mcp.rs` | MCP 與 OAuth：探索、動態註冊、擁有者授權與縮減權限、PKCE、授權碼重送與 refresh token 重用會撤銷連線、OAuth token 不能用在 REST、依權限篩選工具、流程工具經過真實評測 | PostgreSQL + runner |
-| `ccal-api/tests/api.rs` | 權限矩陣、隱藏測資保護、真實判題的各種結果與卡片、revision 追溯、題目集解耦、切換題目集時草稿與進行中的工作、局部補寫無法繞過、匯入的冪等與全有全無、發布前驗證、提交的冪等、線上文案與組別設定、帳號與 session、個人偏好設定、OpenAPI 與 `docs/openapi.json` 一致 | PostgreSQL + runner |
+| `ccal-api/tests/api.rs` | 權限矩陣、隱藏測資保護、真實判題的各種結果與卡片、revision 追溯、題目集解耦、切換題目集時草稿與進行中的工作、局部補寫無法繞過、匯入的冪等與全有全無、發布前驗證、提交的冪等、線上文案與組別設定、帳號與 session、個人偏好設定、練習場（輸出、卡片、頻率與開關）、OpenAPI 與 `docs/openapi.json` 一致 | PostgreSQL + runner |
 
 API 測試會為每個測試建立一個新的資料庫（`ccal_test_<時間>_<亂數>`），一小時以上的舊測試資料庫會自動刪除。
 

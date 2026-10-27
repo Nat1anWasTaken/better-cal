@@ -148,4 +148,5 @@ BUILDX_BUILDER=ccal-capped docker compose up -d --build --wait
 | `JUDGE_MAX_ATTEMPTS` | 每筆提交最多嘗試次數 | 3 |
 | `RUNNER_TIMEOUT_S` | 呼叫 runner 的逾時 | 90 |
 | `RUNNER_CONCURRENCY` | runner 同時執行的沙箱數 | 2 |
+| `PLAYGROUND_CONCURRENCY` | 練習場同時送到 runner 的執行數（和評測共用 runner，超過時回 503「忙碌中」） | 2 |
 | `RUNNER_MAX_TIME_MS` / `RUNNER_MAX_WALL_TIME_MS` / `RUNNER_MAX_MEMORY_KB` / `RUNNER_MAX_OUTPUT_KB` | runner 的硬性上限 | 5000 / 16000 / 262144 / 1024 |

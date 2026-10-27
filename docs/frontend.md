@@ -37,7 +37,7 @@ src/
                 Markdown (react-markdown + rehype-sanitize, raw HTML skipped), StatusPill, AppShell
   components/admin/  form helpers, PolicyEditor, PreviewPanel, StringList
   pages/        Login, Account (incl. forced password change), Preferences (/settings), Home, SetPage, ProblemPage,
-                MySubmissions (+ detail), MyProgress, OAuthConsent (MCP clients' approval page)
+                MySubmissions (+ detail), MyProgress, Playground (/playground), OAuthConsent (MCP clients' approval page)
   pages/admin/  Overview, Problems, ProblemEditor, Sets, SetEditor, ImportExport, Catalog, RuleEditor,
                 CatalogTexts, CustomRule, RuleStats, Students, StudentDetail, Cohorts, ProgressMatrix,
                 Submissions, Settings, Tokens (API 與 MCP: MCP server, connected apps, API tokens), Audit

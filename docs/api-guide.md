@@ -181,3 +181,18 @@ curl -sS "${H[@]}" -X PUT $API/admin/site/active-problem-set \
 - 先比通過題數，再比罰時。罰時 = 每題從這一輪開始到第一次通過的分鐘數 + 通過前每次錯誤提交 20 分鐘。編譯失敗不算錯誤。三者都相同時名次並列。
 - 只列出這一輪有提交過的學生。有效設定 `leaderboard: false` 的學生（可在全站、組別或個人設定）看不到排行，也不會被列出。
 - 徽章：`first_solve`（首殺：本輪第一位通過該題）、`no_hints`（通過前沒有在本輪展開過該題的提示）。依設定 `auto_reveal_hints` 自動顯示的提示不會被記錄，因此不影響 `no_hints`。之後可能新增其他種類，用戶端遇到未知的 `kind` 應直接忽略或原樣顯示。
+
+## 10. 練習場
+
+`POST /playground/run`：用和評測相同的編譯器與沙箱，編譯並執行任意一支 C 程式一次，回傳輸出和教學卡片。不會建立提交，也不會儲存任何內容。
+
+```sh
+curl -sS "${H[@]}" -X POST $API/playground/run \
+  --data '{"source":"#include <stdio.h>\nint main(void){int x;scanf(\"%d\",&x);printf(\"%d\\n\",x*2);}","stdin":"21"}'
+```
+
+- 回應：`compile_success`、`run`（狀態、輸出、stderr、時間與記憶體；無法編譯時為 null）、`cards`、`auto_reveal_hints`、`limits`。
+- 沒有預期輸出，所以只會出現編譯、警告與執行期（崩潰、超時、超過記憶體或輸出上限）的卡片，不會有答案錯誤或隱藏測資的說明。
+- `cards[].hints` 已包含這位使用者可以看到的所有提示（依 `max_hint_levels`）。用戶端先顯示前 `auto_reveal_hints` 個，其餘在學生要求時再顯示。
+- 限制：程式碼與輸入各最多 64 KiB；使用題目的預設資源限制（1 秒、64 MB、輸出 64 KiB）。每位使用者和「執行」共用 `runs_per_minute` 的次數設定（另外計數），同時只能有一個執行；全站同時執行數由 `PLAYGROUND_CONCURRENCY` 限制。
+- 有效設定 `playground: false`（可在全站、組別或個人設定）時回 403，`GET /site` 的 `playground` 也會是 false。擁有者一律可以使用。
