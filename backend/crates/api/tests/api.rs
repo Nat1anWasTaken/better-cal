@@ -557,6 +557,42 @@ async fn auth_flows_password_change_and_session_revocation() {
 }
 
 #[tokio::test]
+async fn preferences_round_trip_and_validation() {
+    let app = app().await;
+    let mut owner = app.owner().await;
+    let mut a = app.student("s1").await;
+    let mut b = app.student("s2").await;
+    // New users get the defaults.
+    let me = a.get("/api/v1/auth/me").await;
+    assert_eq!(me.body["user"]["preferences"]["keymap"], "default");
+    assert_eq!(me.body["user"]["preferences"]["font_size"], 14);
+    let prefs =
+        json!({"editor_theme": "hc_dark", "keymap": "vim", "font_size": 18, "tab_size": 2, "word_wrap": true, "line_numbers": "relative", "minimap": true});
+    let r = a.put("/api/v1/auth/preferences", prefs.clone()).await;
+    assert_eq!(r.status, StatusCode::OK, "{}", r.text);
+    assert_eq!(r.body, prefs);
+    // Persisted, also visible on the next login, and per user.
+    assert_eq!(a.get("/api/v1/auth/me").await.body["user"]["preferences"], prefs);
+    assert_eq!(app.login("s1", "studentpass1").await.get("/api/v1/auth/me").await.body["user"]["preferences"], prefs);
+    assert_eq!(b.get("/api/v1/auth/me").await.body["user"]["preferences"]["keymap"], "default");
+    // Partial bodies fill in defaults.
+    let r = b.put("/api/v1/auth/preferences", json!({"keymap": "vim"})).await;
+    assert_eq!(r.body["font_size"], 14);
+    // Out-of-range values and unknown fields are rejected.
+    let r = a.put("/api/v1/auth/preferences", json!({"font_size": 99, "tab_size": 3})).await;
+    assert_eq!(r.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(r.body["errors"][0]["pointer"], "/font_size");
+    assert_eq!(r.body["errors"][1]["pointer"], "/tab_size");
+    let r = a.put("/api/v1/auth/preferences", json!({"emacs": true})).await;
+    assert!(r.status.is_client_error(), "{}", r.status);
+    assert_eq!(a.get("/api/v1/auth/me").await.body["user"]["preferences"], prefs, "rejected writes change nothing");
+    // API tokens cannot change preferences.
+    let token = owner.token(&["problems:read"]).await;
+    let r = app.with_token(&token).put("/api/v1/auth/preferences", json!({})).await;
+    assert_eq!(r.status, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
 async fn openapi_document_matches_committed_copy() {
     let generated = ccal_api::app::openapi_json();
     let committed = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../docs/openapi.json")).expect("docs/openapi.json exists");

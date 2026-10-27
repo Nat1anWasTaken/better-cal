@@ -3378,6 +3378,45 @@
         }
       }
     },
+    "/api/v1/auth/preferences": {
+      "put": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Replace your preferences (editor theme, keymap, font and layout).",
+        "operationId": "put_preferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserPreferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferences"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/concepts": {
       "get": {
         "tags": [
@@ -5037,6 +5076,16 @@
           }
         }
       },
+      "EditorTheme": {
+        "type": "string",
+        "enum": [
+          "auto",
+          "light",
+          "dark",
+          "hc_dark",
+          "hc_light"
+        ]
+      },
       "EffectivePolicy": {
         "type": "object",
         "required": [
@@ -5376,6 +5425,13 @@
           "unknown"
         ]
       },
+      "Keymap": {
+        "type": "string",
+        "enum": [
+          "default",
+          "vim"
+        ]
+      },
       "Leaderboard": {
         "type": "object",
         "required": [
@@ -5412,6 +5468,14 @@
             "description": "Only students who submitted during the round, best first."
           }
         }
+      },
+      "LineNumbers": {
+        "type": "string",
+        "enum": [
+          "on",
+          "relative",
+          "off"
+        ]
       },
       "LoginRequest": {
         "type": "object",
@@ -8061,7 +8125,8 @@
           "username",
           "display_name",
           "role",
-          "must_change_password"
+          "must_change_password",
+          "preferences"
         ],
         "properties": {
           "display_name": {
@@ -8074,6 +8139,9 @@
           "must_change_password": {
             "type": "boolean"
           },
+          "preferences": {
+            "$ref": "#/components/schemas/UserPreferences"
+          },
           "role": {
             "$ref": "#/components/schemas/Role"
           },
@@ -8081,6 +8149,46 @@
             "type": "string"
           }
         }
+      },
+      "UserPreferences": {
+        "type": "object",
+        "properties": {
+          "editor_theme": {
+            "$ref": "#/components/schemas/EditorTheme",
+            "default": "auto"
+          },
+          "font_size": {
+            "type": "integer",
+            "format": "int32",
+            "description": "10–28 px.",
+            "default": 14,
+            "minimum": 0
+          },
+          "keymap": {
+            "$ref": "#/components/schemas/Keymap",
+            "default": "default"
+          },
+          "line_numbers": {
+            "$ref": "#/components/schemas/LineNumbers",
+            "default": "on"
+          },
+          "minimap": {
+            "type": "boolean",
+            "default": false
+          },
+          "tab_size": {
+            "type": "integer",
+            "format": "int32",
+            "description": "2, 4 or 8.",
+            "default": 4,
+            "minimum": 0
+          },
+          "word_wrap": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "additionalProperties": false
       },
       "UserProblemProgress": {
         "type": "object",

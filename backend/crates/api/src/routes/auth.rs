@@ -12,10 +12,11 @@ use super::TAG_AUTH;
 use crate::auth::principal::Role;
 use crate::auth::{Principal, SESSION_COOKIE, password, tokens};
 use crate::error::{ApiError, ApiResult, JsonBody};
+use crate::preferences::UserPreferences;
 use crate::state::AppState;
 
 pub fn router() -> OpenApiRouter<AppState> {
-    OpenApiRouter::new().routes(routes!(login)).routes(routes!(logout)).routes(routes!(me)).routes(routes!(change_password))
+    OpenApiRouter::new().routes(routes!(login)).routes(routes!(logout)).routes(routes!(me)).routes(routes!(change_password)).routes(routes!(put_preferences))
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -31,6 +32,7 @@ pub struct UserInfo {
     pub display_name: String,
     pub role: Role,
     pub must_change_password: bool,
+    pub preferences: UserPreferences,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -51,6 +53,7 @@ struct UserRow {
     password_hash: String,
     disabled: bool,
     must_change_password: bool,
+    preferences: serde_json::Value,
 }
 
 fn user_info(u: &UserRow) -> UserInfo {
@@ -60,6 +63,7 @@ fn user_info(u: &UserRow) -> UserInfo {
         display_name: u.display_name.clone(),
         role: if u.role == "owner" { Role::Owner } else { Role::Student },
         must_change_password: u.must_change_password,
+        preferences: UserPreferences::from_stored(u.preferences.clone()),
     }
 }
 
@@ -85,11 +89,12 @@ async fn login(State(st): State<AppState>, headers: HeaderMap, JsonBody(req): Js
     if !st.limiter.check(&format!("login:{ip}:{uname}"), 10, window).await || !st.limiter.check(&format!("login-ip:{ip}"), 300, window).await {
         return Err(ApiError::too_many("登入嘗試次數過多，請 5 分鐘後再試"));
     }
-    let user: Option<UserRow> =
-        sqlx::query_as("SELECT id, username, display_name, role, password_hash, disabled, must_change_password FROM users WHERE lower(username) = $1")
-            .bind(&uname)
-            .fetch_optional(&st.db)
-            .await?;
+    let user: Option<UserRow> = sqlx::query_as(
+        "SELECT id, username, display_name, role, password_hash, disabled, must_change_password, preferences FROM users WHERE lower(username) = $1",
+    )
+    .bind(&uname)
+    .fetch_optional(&st.db)
+    .await?;
     let ok = match &user {
         Some(u) => password::verify(&req.password, &u.password_hash) && !u.disabled,
         None => {
@@ -132,10 +137,11 @@ async fn logout(State(st): State<AppState>, p: Principal) -> ApiResult<Response>
 /// Current user, plus the CSRF token for cookie sessions.
 #[utoipa::path(get, path = "/auth/me", tag = TAG_AUTH, responses((status = 200, body = Me), (status = 401, body = crate::error::ProblemDetails)))]
 async fn me(State(st): State<AppState>, p: Principal) -> ApiResult<Json<Me>> {
-    let user: UserRow = sqlx::query_as("SELECT id, username, display_name, role, password_hash, disabled, must_change_password FROM users WHERE id = $1")
-        .bind(p.user_id)
-        .fetch_one(&st.db)
-        .await?;
+    let user: UserRow =
+        sqlx::query_as("SELECT id, username, display_name, role, password_hash, disabled, must_change_password, preferences FROM users WHERE id = $1")
+            .bind(p.user_id)
+            .fetch_one(&st.db)
+            .await?;
     let csrf: Option<String> = match &p.session_hash {
         Some(h) => sqlx::query_scalar("SELECT csrf_token FROM sessions WHERE token_hash = $1").bind(h).fetch_optional(&st.db).await?,
         None => None,
@@ -177,4 +183,23 @@ async fn change_password(State(st): State<AppState>, p: Principal, JsonBody(req)
         .await?;
     tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Replace your preferences (editor theme, keymap, font and layout).
+#[utoipa::path(put, path = "/auth/preferences", tag = TAG_AUTH, request_body = UserPreferences,
+    responses((status = 200, body = UserPreferences), (status = 422, body = crate::error::ProblemDetails)))]
+async fn put_preferences(State(st): State<AppState>, p: Principal, JsonBody(prefs): JsonBody<UserPreferences>) -> ApiResult<Json<UserPreferences>> {
+    if p.token_id.is_some() {
+        return Err(ApiError::forbidden("API token 不能修改偏好設定"));
+    }
+    let errors = prefs.validate();
+    if !errors.is_empty() {
+        return Err(ApiError::validation(errors));
+    }
+    sqlx::query("UPDATE users SET preferences = $2, updated_at = now() WHERE id = $1")
+        .bind(p.user_id)
+        .bind(serde_json::to_value(&prefs).map_err(ApiError::internal)?)
+        .execute(&st.db)
+        .await?;
+    Ok(Json(prefs))
 }
