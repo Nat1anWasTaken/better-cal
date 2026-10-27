@@ -1,4 +1,5 @@
-import { Check, CircleDot, RotateCcw, ServerCrash } from 'lucide-react'
+import { Check, CircleDot, PartyPopper, RotateCcw, ServerCrash } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 import type { Span, SubmissionView } from '@/api/types'
 import { CardList } from '@/components/CardList'
@@ -42,9 +43,11 @@ interface Props {
   onRejudge?: () => void
   /** Polling gave up: the service did not answer in time. */
   timedOut?: boolean
+  /** Shown with an accepted submit: where to go next. */
+  completion?: { message?: string; action?: ReactNode }
 }
 
-export function SubmissionResult({ submission: s, onJump, onRevealHint, onRejudge, timedOut }: Props) {
+export function SubmissionResult({ submission: s, onJump, onRevealHint, onRejudge, timedOut, completion }: Props) {
   const finished = s.status === 'done' || s.status === 'system_error'
   const v = verdictInfo(finished ? s.verdict : null)
   const kindLabel = s.kind === 'submit' ? '正式提交' : s.kind === 'test_run' ? '測試執行' : '執行'
@@ -83,9 +86,13 @@ export function SubmissionResult({ submission: s, onJump, onRevealHint, onRejudg
       )}
 
       {finished && s.verdict === 'accepted' && (
-        <p className="rounded-lg border border-success/30 bg-success-soft px-4 py-3 text-success">
-          {s.kind === 'submit' ? '全部測資都通過了，做得好！' : '公開測資都通過了。準備好就按「提交」用全部測資評測吧。'}
-        </p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-success/30 bg-success-soft px-4 py-3 text-success" data-testid="accepted-banner">
+          <p className="flex flex-1 items-center gap-2">
+            {s.kind === 'submit' && <PartyPopper aria-hidden className="size-4 shrink-0" />}
+            {s.kind === 'submit' ? (completion?.message ?? '全部測資都通過了，做得好！') : '公開測資都通過了。準備好就按「提交」用全部測資評測吧。'}
+          </p>
+          {s.kind === 'submit' && completion?.action}
+        </div>
       )}
 
       {s.cards.length > 0 && <CardList cards={s.cards} onJump={onJump} onRevealHint={onRevealHint} rawExpanded={s.raw_expanded} />}

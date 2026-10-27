@@ -212,3 +212,24 @@ describe('scopes', async () => {
     expect(scopeLabel('x:y')).toBe('x:y')
   })
 })
+
+describe('set navigation', async () => {
+  const { nextUnsolved, setPosition } = await import('./sets')
+  const item = (slug: string, position: number, progress = 'not_started') => ({ slug, position, progress, title: slug, problem_id: slug, mode: 'full' as const })
+  const set = [item('c', 3), item('a', 1, 'solved'), item('b', 2), item('d', 4, 'credited')]
+
+  it('finds neighbours by position', () => {
+    expect(setPosition(set, 'b')).toMatchObject({ index: 1, total: 4, prev: { slug: 'a' }, next: { slug: 'c' } })
+    expect(setPosition(set, 'a')?.prev).toBeNull()
+    expect(setPosition(set, 'zzz')).toBeNull()
+  })
+  it('suggests the next unfinished problem, wrapping around', () => {
+    expect(nextUnsolved(set, 'b')?.slug).toBe('c')
+    expect(nextUnsolved(set, 'c')?.slug).toBe('b')
+    expect(nextUnsolved(set, 'a')?.slug).toBe('b')
+  })
+  it('ignores the current problem even before progress refreshes', () => {
+    expect(nextUnsolved([item('a', 1), item('b', 2, 'solved')], 'a')).toBeNull()
+    expect(nextUnsolved([item('a', 1)], 'a')).toBeNull()
+  })
+})

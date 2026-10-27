@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeftRight, CloudOff, FileCheck2, Info, Play, RotateCcw, Send, TriangleAlert } from 'lucide-react'
+import { ArrowLeftRight, ArrowRight, ChevronLeft, ChevronRight, CloudOff, FileCheck2, Info, Play, RotateCcw, Send, TriangleAlert } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { toast } from 'sonner'
@@ -10,6 +10,7 @@ import { CodeEditor, type CodeEditorHandle } from '@/components/CodeEditor'
 import { EditorPreferencesPopover } from '@/components/EditorPreferencesPopover'
 import { Markdown } from '@/components/Markdown'
 import { ErrorState, Loading, Page } from '@/components/Page'
+import { StatusPill } from '@/components/StatusPill'
 import { SubmissionResult } from '@/components/SubmissionResult'
 import {
   AlertDialog,
@@ -35,6 +36,8 @@ import { saveLabel } from '@/lib/autosave'
 import { cardsToDiagnostics } from '@/lib/cards'
 import { errorMessage } from '@/lib/errors'
 import { buildDoc } from '@/lib/fillin'
+import { PROGRESS } from '@/lib/format'
+import { isDone, nextUnsolved, setPosition } from '@/lib/sets'
 import { cn } from '@/lib/utils'
 
 function Statement({ p }: { p: ProblemView }) {
@@ -92,7 +95,27 @@ function SaveStatus({ label, offline, conflict }: { label: string; offline: bool
   )
 }
 
+function PrevNext({ to, label, icon }: { to: string | null; label: string; icon: React.ReactNode }) {
+  if (!to)
+    return (
+      <Button variant="ghost" size="icon-xs" aria-label={label} disabled>
+        {icon}
+      </Button>
+    )
+  return (
+    <Button asChild variant="ghost" size="icon-xs" aria-label={label} title={label}>
+      <Link to={to}>{icon}</Link>
+    </Button>
+  )
+}
+
 export function ProblemPage() {
+  const { setId, slug = '' } = useParams()
+  // Remount per problem so the editor, result and stdin don't carry over to the next one.
+  return <ProblemWorkspace key={`${setId}/${slug}`} />
+}
+
+function ProblemWorkspace() {
   const { setId, slug = '' } = useParams()
   const { me } = useAuth()
   const qc = useQueryClient()
@@ -177,6 +200,12 @@ export function ProblemPage() {
     [desktop],
   )
 
+  // An accepted submit changes this set's progress: refresh it for the pill, the next-problem pick and the set list.
+  const accepted = submission?.status === 'done' && submission.kind === 'submit' && submission.verdict === 'accepted'
+  useEffect(() => {
+    if (accepted && setId) void qc.invalidateQueries({ queryKey: ['set', setId] })
+  }, [accepted, setId, qc])
+
   const diagnostics = useMemo(() => cardsToDiagnostics(submission?.cards ?? []), [submission])
 
   const resolveConflict = (keepMine: boolean) => {
@@ -206,6 +235,36 @@ export function ProblemPage() {
       </Page>
     )
   if (!p || !initial) return <Loading label="載入你的程式草稿…" />
+
+  const problems = set.data?.problems
+  const here = problems?.find((x) => x.slug === slug)
+  const solved = accepted || (!!here && isDone(here.progress))
+  const position = problems ? setPosition(problems, slug) : null
+  const problemHref = (to: string) => `/sets/${setId}/problems/${to}`
+
+  let completion: { message?: string; action?: React.ReactNode } | undefined
+  if (setId && problems) {
+    const next = nextUnsolved(problems, slug)
+    completion = next
+      ? {
+          action: (
+            <Button asChild size="sm" data-testid="next-problem">
+              <Link to={problemHref(next.slug)}>
+                下一題：{next.title}
+                <ArrowRight aria-hidden />
+              </Link>
+            </Button>
+          ),
+        }
+      : {
+          message: '全部測資都通過了，這個題目集的題目你都完成了！',
+          action: (
+            <Button asChild size="sm" variant="outline">
+              <Link to={`/sets/${setId}`}>回到題目集</Link>
+            </Button>
+          ),
+        }
+  }
 
   const startDoc = doc.current ? (p.mode === 'fill_in' && p.segments ? buildDoc(p.segments, doc.current.blanks ?? undefined) : { doc: doc.current.code, ranges: undefined }) : initial
   const s = draft.state
@@ -283,7 +342,7 @@ export function ProblemPage() {
   const resultPane = (
     <div className="h-full overflow-y-auto p-4" aria-label="執行結果">
       {submission ? (
-        <SubmissionResult submission={submission} onJump={onJump} onRevealHint={revealHint} onRejudge={rejudge} timedOut={timedOut} />
+        <SubmissionResult submission={submission} onJump={onJump} onRevealHint={revealHint} onRejudge={rejudge} timedOut={timedOut} completion={completion} />
       ) : (
         <div className="space-y-2 text-muted-foreground">
           <p>按「執行」用公開測資檢查你的程式，結果和說明會出現在這裡。</p>
@@ -303,6 +362,16 @@ export function ProblemPage() {
         )}
         <span aria-hidden className="text-muted-foreground">/</span>
         <span className="font-medium">{p.title}</span>
+        {solved && <StatusPill tone="success" label={here?.progress === 'credited' && !accepted ? PROGRESS.credited.label : PROGRESS.solved.label} />}
+        {setId && position && (
+          <nav aria-label="題目集中的位置" className="ml-auto flex items-center gap-1 text-muted-foreground">
+            <PrevNext to={position.prev && problemHref(position.prev.slug)} label="上一題" icon={<ChevronLeft aria-hidden />} />
+            <span className="text-xs tabular-nums">
+              第 {position.index + 1} / {position.total} 題
+            </span>
+            <PrevNext to={position.next && problemHref(position.next.slug)} label="下一題" icon={<ChevronRight aria-hidden />} />
+          </nav>
+        )}
       </div>
       {activeChanged && (
         <div role="status" className="flex flex-wrap items-center gap-2 border-b border-primary/30 bg-primary-soft px-4 py-2 text-sm" data-testid="active-set-banner">
