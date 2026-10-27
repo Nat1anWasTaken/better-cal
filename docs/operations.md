@@ -41,13 +41,16 @@ docker compose exec app /app/cyculcal create-owner --username owner   # 互動�
 ```
 COOKIE_SECURE=true
 PUBLIC_ORIGINS=https://judge.example.org
+PUBLIC_URL=https://judge.example.org
 ```
+
+`PUBLIC_URL` 是 MCP 的 OAuth issuer，沒設定就無法啟用 MCP，見 [mcp.md](mcp.md)。
 
 ## Dokploy
 
 1. 新增 **Compose** 類型的應用程式（Docker Compose），**不要用 Stack / Swarm 模式**。原因是 Swarm service 不支援 `privileged`，而 runner 需要它才能建立 cgroup 與命名空間。
 2. 來源指向這個 repo，Compose 檔為 `docker-compose.yml`。
-3. 在 Environment 設定 `POSTGRES_PASSWORD`、`RUNNER_TOKEN`、`COOKIE_SECURE=true`、`PUBLIC_ORIGINS=https://你的網域`。
+3. 在 Environment 設定 `POSTGRES_PASSWORD`、`RUNNER_TOKEN`、`COOKIE_SECURE=true`、`PUBLIC_ORIGINS=https://你的網域`、`PUBLIC_URL=https://你的網域`。
 4. Domains：把網域指到 service `app`、port `8080`，由 Dokploy 的 Traefik 處理 HTTPS。如果不需要直接暴露主機 port，可以移除 `ports`。
 5. 部署後，在 Dokploy 的終端機（或主機上）執行 `docker compose exec app /app/cyculcal create-owner --username owner`。
 
@@ -137,6 +140,7 @@ BUILDX_BUILDER=ccal-capped docker compose up -d --build --wait
 | `BIND` | API 監聽位址 | `0.0.0.0:8080` |
 | `STATIC_DIR` | 前端靜態檔目錄 | （容器內為 `/app/web`） |
 | `PUBLIC_ORIGINS` | 允許的瀏覽器 Origin（逗號分隔） | 空 |
+| `PUBLIC_URL` | 網站對外網址；MCP 的 OAuth issuer，`{PUBLIC_URL}/mcp` 為 MCP 伺服器 | 空（MCP 無法啟用） |
 | `COOKIE_SECURE` | cookie 加上 Secure | `false` |
 | `SESSION_TTL_HOURS` | session 閒置期限 | 336（14 天） |
 | `JUDGE_WORKERS` | 評測 worker 數 | 2 |

@@ -37,12 +37,13 @@ src/
                 Markdown (react-markdown + rehype-sanitize, raw HTML skipped), StatusPill, AppShell
   components/admin/  form helpers, PolicyEditor, PreviewPanel, StringList
   pages/        Login, Account (incl. forced password change), Preferences (/settings), Home, SetPage, ProblemPage,
-                MySubmissions (+ detail), MyProgress
+                MySubmissions (+ detail), MyProgress, OAuthConsent (MCP clients' approval page)
   pages/admin/  Overview, Problems, ProblemEditor, Sets, SetEditor, ImportExport, Catalog, RuleEditor,
                 CatalogTexts, CustomRule, RuleStats, Students, StudentDetail, Cohorts, ProgressMatrix,
-                Submissions, Settings, Tokens, Audit
+                Submissions, Settings, Tokens (API 與 MCP: MCP server, connected apps, API tokens), Audit
 e2e/            Playwright: auth setup (one login per role), student flow, fill-in, autosave/reload,
-                active-set switch banner, teaching-text edit → preview → publish → restore, preferences + Vim
+                active-set switch banner, teaching-text edit → preview → publish → restore, preferences + Vim,
+                MCP OAuth consent → connection listed → disconnect (needs PUBLIC_URL on the stack)
 ```
 
 The admin dashboard, the problem workspace and the history pages are lazy-loaded chunks, so the login

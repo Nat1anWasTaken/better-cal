@@ -44,6 +44,15 @@
   - 格式為 `ccal_` 加上 256-bit 亂數，只存 SHA-256。
   - 有 scope 限制，可設定到期，可撤銷。
   - token 不能建立 token、不能重設密碼、不能建立擁有者。
+- MCP 的 OAuth（詳見 [mcp.md](mcp.md)）：
+  - 伺服器內建 OAuth 2.1 授權伺服器；只支援授權碼流程，並強制 PKCE S256。
+  - 任何應用程式都可以動態註冊（RFC 7591）或以 Client ID Metadata Document 識別自己，但註冊本身不給任何權限：必須由擁有者登入、在授權頁確認導回網域並勾選權限。
+  - redirect URI 只接受 https 或本機 http，且必須與註冊的完全相同；不符時顯示錯誤頁，不會導向。
+  - 授權碼 10 分鐘、只能用一次；重送用過的授權碼會撤銷整個連線。access token（`ccalo_`）1 小時；refresh token（`ccalr_`）每次使用都會換新，重用舊的會撤銷整個連線。全部只存 SHA-256。
+  - access token 只綁定 `/mcp`（RFC 8707 resource），REST API 不接受。
+  - 每個連線是 `api_tokens` 中 `kind = 'oauth'` 的一筆，所以 scope、撤銷與稽核都和 API token 相同；MCP 的工具呼叫在伺服器內部走同一個 router，由原本的 handler 檢查權限。
+  - 抓取 Client ID Metadata Document 時：只用 https、拒絕私有與保留位址（並固定已檢查的 IP，避免 DNS rebinding）、不跟隨重新導向、5 秒逾時、最多 64 KiB。
+  - 在全站設定關閉 MCP 後，所有 OAuth 端點與 `/mcp` 立即回 404。
 - 沒有預設帳號，也不開放註冊。第一個擁有者只能用伺服器上的 CLI 建立。
 
 ## 權限
@@ -54,7 +63,7 @@
 |---|---|
 | 學生 | 只能讀取已發布、且在自己可見題目集中的題目；只能存取自己的提交與草稿。別人的提交一律回 404，避免透露它是否存在 |
 | 擁有者 session | 全部權限 |
-| API token | 擁有者身分加上 scope 限制 |
+| API token、MCP 連線 | 擁有者身分加上 scope 限制 |
 
 整合測試 `permissions_are_enforced_for_every_kind_of_caller` 涵蓋這些規則。
 
@@ -63,6 +72,6 @@
 - **Markdown**：前端使用 `rehype-sanitize`，不允許 raw HTML。
 - **安全標頭**：
   - 全站：`Content-Security-Policy`（`default-src 'self'`）、`X-Frame-Options: DENY`、`nosniff`、`Referrer-Policy`。
-  - API 回應：`Cache-Control: no-store`。
+  - API、OAuth 與 MCP 回應：`Cache-Control: no-store`。
 - **自訂診斷規則的正規表達式**：使用 Rust `regex`（線性時間、有大小上限），沒有 ReDoS 風險。
 - **稽核**：所有管理操作都寫入 `audit_log`（誰、透過哪個 token、做了什麼）。

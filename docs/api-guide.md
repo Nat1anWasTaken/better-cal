@@ -7,6 +7,8 @@
 
 所有路徑都以 `/api/v1` 開頭。
 
+支援 MCP 的 Agent（Claude、ChatGPT、Claude Code…）也可以直接連 MCP 伺服器 `{網站}/mcp`，工具與這裡的 API 一一對應，見 [mcp.md](mcp.md)。
+
 ## 1. 認證
 
 ### API token（Agent 用）

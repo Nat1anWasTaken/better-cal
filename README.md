@@ -50,6 +50,7 @@ cd frontend && pnpm install && pnpm dev
 | 文件 | 內容 |
 |---|---|
 | [docs/api-guide.md](docs/api-guide.md) | 給 Agent／腳本的 API 指南：token、錯誤格式、冪等、發布流程 |
+| [docs/mcp.md](docs/mcp.md) | MCP 伺服器：讓 Claude、ChatGPT 等 Agent 以 OAuth 連線管理題庫 |
 | [docs/openapi.json](docs/openapi.json) | OpenAPI 3（執行中的伺服器也提供 `/api/v1/openapi.json` 與 `/api/docs`） |
 | [docs/import-format.md](docs/import-format.md) | JSON 匯入／匯出格式 `cycu-cal.import/v1` |
 | [docs/diagnostics.md](docs/diagnostics.md) | 診斷轉譯層的架構、規則、測試，以及如何線上編輯文案 |
