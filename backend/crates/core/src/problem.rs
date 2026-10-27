@@ -212,9 +212,6 @@ impl ProblemContent {
         if !self.tests.iter().any(|t| t.visibility == Visibility::Public) {
             e.push(FieldError::new(p("tests"), "no_public_test", "發布前至少需要 1 筆公開測資（學生按「執行」時使用）"));
         }
-        if !self.tests.iter().any(|t| t.visibility == Visibility::Hidden) {
-            e.push(FieldError::new(p("tests"), "no_hidden_test", "發布前至少需要 1 筆隱藏測資（正式評測使用）"));
-        }
         for (i, t) in self.tests.iter().enumerate() {
             if t.expected_output.trim().is_empty() {
                 e.push(FieldError::new(p(&format!("tests/{i}/expected_output")), "empty_output", "預期輸出是空的，請確認這是刻意的"));
@@ -275,13 +272,15 @@ mod tests {
     }
 
     #[test]
-    fn publish_requires_public_and_hidden_tests() {
+    fn publish_requires_public_test_but_not_hidden() {
         let mut p = sample();
         p.tests.retain(|t| t.visibility == Visibility::Public);
+        assert!(p.validate_for_publish("/problems/0").is_empty());
+        p.tests.clear();
         let e = p.validate_for_publish("/problems/0");
         assert_eq!(e.len(), 1);
         assert_eq!(e[0].pointer, "/problems/0/tests");
-        assert_eq!(e[0].code, "no_hidden_test");
+        assert_eq!(e[0].code, "no_public_test");
     }
 
     #[test]
