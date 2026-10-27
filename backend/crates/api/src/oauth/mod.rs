@@ -11,6 +11,7 @@
 //! it, so revoking the grant cuts the client off at once.
 
 pub mod cimd;
+pub mod jwt;
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -108,7 +109,8 @@ async fn authorization_server(State(st): State<AppState>) -> Response {
         "response_modes_supported": ["query"],
         "grant_types_supported": ["authorization_code", "refresh_token"],
         "code_challenge_methods_supported": ["S256"],
-        "token_endpoint_auth_methods_supported": ["none", "client_secret_post", "client_secret_basic"],
+        "token_endpoint_auth_methods_supported": ["none", "client_secret_post", "client_secret_basic", "private_key_jwt"],
+        "token_endpoint_auth_signing_alg_values_supported": jwt::SIGNING_ALGS.iter().map(|a| format!("{a:?}")).collect::<Vec<_>>(),
         "revocation_endpoint_auth_methods_supported": ["none", "client_secret_post", "client_secret_basic"],
         "client_id_metadata_document_supported": true,
         "authorization_response_iss_parameter_supported": true,
@@ -166,9 +168,11 @@ pub struct ClientRow {
     pub name: String,
     pub redirect_uris: Vec<String>,
     pub secret_hash: Option<Vec<u8>>,
+    /// Registration metadata (`token_endpoint_auth_method`, `jwks_uri`…).
+    pub metadata: sqlx::types::Json<Value>,
 }
 
-const CLIENT_COLUMNS: &str = "id, source, name, redirect_uris, secret_hash";
+const CLIENT_COLUMNS: &str = "id, source, name, redirect_uris, secret_hash, metadata";
 
 pub async fn find_client(st: &AppState, id: &str) -> Result<Option<ClientRow>, sqlx::Error> {
     sqlx::query_as(&format!("SELECT {CLIENT_COLUMNS} FROM oauth_clients WHERE id = $1")).bind(id).fetch_optional(&st.db).await
@@ -397,9 +401,21 @@ async fn resolve_client(st: &AppState, client_id: &str) -> Result<Option<ClientR
     })
 }
 
-/// Client authentication at the token endpoint: HTTP Basic, form secret, or
-/// none for public clients. Clients registered with a secret must present it.
-async fn authenticate_client(st: &AppState, headers: &HeaderMap, form: &HashMap<String, String>) -> Result<ClientRow, OAuthError> {
+/// Client authentication at the token endpoint: a signed `client_assertion`
+/// (private_key_jwt), HTTP Basic, form secret, or none for public clients.
+/// Clients registered with a secret or keys must use them.
+async fn authenticate_client(st: &AppState, e: &Endpoints, headers: &HeaderMap, form: &HashMap<String, String>) -> Result<ClientRow, OAuthError> {
+    let invalid = |msg: String| OAuthError::new(StatusCode::UNAUTHORIZED, "invalid_client", msg);
+    if let Some(assertion) = form.get("client_assertion") {
+        if form.get("client_assertion_type").map(String::as_str) != Some(jwt::ASSERTION_TYPE) {
+            return Err(invalid("unsupported client_assertion_type".into()));
+        }
+        let id = form.get("client_id").cloned().or_else(|| jwt::unverified_issuer(assertion)).ok_or_else(|| invalid("client_id is required".into()))?;
+        let client = find_client(st, &id).await?.ok_or_else(|| invalid("unknown client".into()))?;
+        let audiences = [e.issuer.clone(), format!("{}/oauth/token", e.issuer)];
+        jwt::verify(st, &client, assertion, &audiences).await.map_err(invalid)?;
+        return Ok(client);
+    }
     let basic = headers
         .get(header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
@@ -415,6 +431,9 @@ async fn authenticate_client(st: &AppState, headers: &HeaderMap, form: &HashMap<
         }
     };
     let client = find_client(st, &id).await?.ok_or_else(|| OAuthError::new(StatusCode::UNAUTHORIZED, "invalid_client", "unknown client"))?;
+    if jwt::requires_assertion(&client) {
+        return Err(invalid("this client must authenticate with a client_assertion (private_key_jwt)".into()));
+    }
     if let Some(hash) = &client.secret_hash {
         let ok = secret.is_some_and(|s| tokens::constant_time_eq(&tokens::digest(&s), hash));
         if !ok {
@@ -452,7 +471,7 @@ async fn token(State(st): State<AppState>, headers: HeaderMap, axum::Form(form):
     let Some(e) = endpoints(&st) else { return disabled() };
     let r = match form.get("grant_type").map(String::as_str) {
         Some("authorization_code") => exchange_code(&st, &e, &headers, &form).await,
-        Some("refresh_token") => refresh(&st, &headers, &form).await,
+        Some("refresh_token") => refresh(&st, &e, &headers, &form).await,
         _ => Err(OAuthError::bad("unsupported_grant_type", "grant_type must be authorization_code or refresh_token")),
     };
     no_store(match r {
@@ -477,7 +496,7 @@ struct CodeRow {
 }
 
 async fn exchange_code(st: &AppState, e: &Endpoints, headers: &HeaderMap, form: &HashMap<String, String>) -> Result<Value, OAuthError> {
-    let client = authenticate_client(st, headers, form).await?;
+    let client = authenticate_client(st, e, headers, form).await?;
     let code = form.get("code").ok_or_else(|| OAuthError::bad("invalid_request", "code is required"))?;
     let verifier = form.get("code_verifier").ok_or_else(|| OAuthError::bad("invalid_request", "code_verifier is required"))?;
     let mut tx = st.db.begin().await?;
@@ -532,8 +551,8 @@ struct RefreshRow {
     revoked: bool,
 }
 
-async fn refresh(st: &AppState, headers: &HeaderMap, form: &HashMap<String, String>) -> Result<Value, OAuthError> {
-    let client = authenticate_client(st, headers, form).await?;
+async fn refresh(st: &AppState, e: &Endpoints, headers: &HeaderMap, form: &HashMap<String, String>) -> Result<Value, OAuthError> {
+    let client = authenticate_client(st, e, headers, form).await?;
     let rt = form.get("refresh_token").ok_or_else(|| OAuthError::bad("invalid_request", "refresh_token is required"))?;
     let mut tx = st.db.begin().await?;
     let row: Option<RefreshRow> = sqlx::query_as(

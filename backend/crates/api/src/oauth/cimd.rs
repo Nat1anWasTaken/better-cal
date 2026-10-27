@@ -35,7 +35,15 @@ pub async fn resolve(st: &AppState, url: &str) -> Result<ClientRow, String> {
         (Err(_), Some(c)) => return Ok(c),
         (Err(e), None) => return Err(format!("無法取得應用程式的中繼資料（{url}）：{e}")),
     };
-    let (name, redirect_uris) = validate(url, &doc)?;
+    let (name, redirect_uris, auth) = validate(url, &doc)?;
+    let metadata = json!({
+        "client_name": name,
+        "client_uri": doc.get("client_uri"),
+        "logo_uri": doc.get("logo_uri"),
+        "token_endpoint_auth_method": auth,
+        "jwks_uri": doc.get("jwks_uri"),
+        "jwks": doc.get("jwks"),
+    });
     sqlx::query(
         "INSERT INTO oauth_clients (id, source, name, redirect_uris, metadata) VALUES ($1, 'cimd', $2, $3, $4)
          ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, redirect_uris = EXCLUDED.redirect_uris, metadata = EXCLUDED.metadata, refreshed_at = now()",
@@ -43,22 +51,31 @@ pub async fn resolve(st: &AppState, url: &str) -> Result<ClientRow, String> {
     .bind(url)
     .bind(&name)
     .bind(&redirect_uris)
-    .bind(json!({"client_name": name, "client_uri": doc.get("client_uri"), "logo_uri": doc.get("logo_uri")}))
+    .bind(&metadata)
     .execute(&st.db)
     .await
     .map_err(|e| e.to_string())?;
-    Ok(ClientRow { id: url.to_string(), source: "cimd".into(), name, redirect_uris, secret_hash: None })
+    Ok(ClientRow { id: url.to_string(), source: "cimd".into(), name, redirect_uris, secret_hash: None, metadata: sqlx::types::Json(metadata) })
 }
 
 /// Checks the document per the CIMD draft: `client_id` must equal its URL,
-/// and only public clients (no shared secret) are accepted.
-fn validate(url: &str, doc: &Value) -> Result<(String, Vec<String>), String> {
+/// and clients are public or sign with published keys (no shared secrets).
+/// Returns the name, redirect URIs and token endpoint auth method.
+fn validate(url: &str, doc: &Value) -> Result<(String, Vec<String>, String), String> {
     if doc.get("client_id").and_then(Value::as_str) != Some(url) {
         return Err("中繼資料的 client_id 與網址不符".into());
     }
     let method = doc.get("token_endpoint_auth_method").and_then(Value::as_str).unwrap_or("none");
-    if method != "none" {
-        return Err(format!("不支援的 token_endpoint_auth_method：{method}"));
+    match method {
+        "none" => {}
+        "private_key_jwt" => {
+            let inline = doc.get("jwks").and_then(|j| j.get("keys")).and_then(Value::as_array).is_some_and(|k| !k.is_empty());
+            let uri = doc.get("jwks_uri").and_then(Value::as_str).is_some_and(|u| u.starts_with("https://"));
+            if !inline && !uri {
+                return Err("private_key_jwt 需要 jwks 或 https 的 jwks_uri".into());
+            }
+        }
+        _ => return Err(format!("不支援的 token_endpoint_auth_method：{method}")),
     }
     let uris: Vec<String> =
         doc.get("redirect_uris").and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect()).unwrap_or_default();
@@ -67,7 +84,7 @@ fn validate(url: &str, doc: &Value) -> Result<(String, Vec<String>), String> {
     }
     let name: String = doc.get("client_name").and_then(Value::as_str).unwrap_or("").trim().chars().take(80).collect();
     let name = if name.is_empty() { reqwest::Url::parse(url).ok().and_then(|u| u.host_str().map(str::to_string)).unwrap_or_default() } else { name };
-    Ok((name, uris))
+    Ok((name, uris, method.to_string()))
 }
 
 /// Addresses we refuse to connect to on a client's behalf.
@@ -102,7 +119,7 @@ fn is_public(ip: IpAddr) -> bool {
     }
 }
 
-async fn fetch(url: &str) -> Result<Value, String> {
+pub(super) async fn fetch(url: &str) -> Result<Value, String> {
     let u = reqwest::Url::parse(url).map_err(|_| "網址格式錯誤".to_string())?;
     if u.scheme() != "https" || u.fragment().is_some() || !u.username().is_empty() || u.path() == "/" {
         return Err("client_id 必須是含路徑的 https 網址".into());

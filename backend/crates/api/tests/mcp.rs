@@ -348,3 +348,77 @@ async fn api_tokens_work_over_mcp_and_curated_tools_use_the_judge() {
     assert_eq!(status.body["server_url"], RESOURCE);
     assert!(status.body["tools"].as_array().unwrap().len() > 40);
 }
+
+/// Throwaway key for the private_key_jwt test only (never used anywhere else).
+const TEST_KEY_PEM: &str = include_str!("fixtures/test-client-rsa.pem");
+const TEST_KEY_N: &str = "1nRTIFc7bLW78eC7shpJ8YEW70yOxeLOnrVoAPF_5fcuW2BoqRTbwxOAo5BbuTcMgtR5Hsb-_BeFPRMu5Wyq9mRjQ0m2Q1mssOkab3E7bPKduvuDe2vxKkpSMSQV1Xzobxe67oAd_bc9T-PTGzlXMYUybnC_syN0Eq_eSu7_zBRfhmaIBTs0XnPca2fPXmF6KQi0PNjaNsJZC_1QXSi6jjVylUA5-DaFaX-iEEx4yL_oblLk6N2FTnJhR6uQb7tAkkKdgKuTEwOs_0Ql7v62LwTT5UUrp9qVcLUWPCjTDWYtBjG_zh55zuM4mvAtuYBbUbdptgyRdDgaBBfECpG-Iw";
+
+fn assertion(client_id: &str, aud: &str, jti: &str) -> String {
+    let now = chrono::Utc::now().timestamp();
+    let claims = json!({"iss": client_id, "sub": client_id, "aud": aud, "jti": jti, "iat": now, "exp": now + 300});
+    let mut header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::RS256);
+    header.kid = Some("k1".into());
+    jsonwebtoken::encode(&header, &claims, &jsonwebtoken::EncodingKey::from_rsa_pem(TEST_KEY_PEM.as_bytes()).unwrap()).unwrap()
+}
+
+#[tokio::test]
+async fn metadata_document_clients_sign_with_private_key_jwt() {
+    let app = app().await;
+    let mut owner = app.owner().await;
+    set_mcp_enabled(&mut owner, true).await;
+    let meta = raw(&app, "GET", "/.well-known/oauth-authorization-server", &[], None).await;
+    assert!(meta.body["token_endpoint_auth_methods_supported"].as_array().unwrap().contains(&json!("private_key_jwt")));
+
+    // A CIMD client like ChatGPT's, already cached (so no network fetch), with inline keys.
+    let cid = "https://agent.example/oauth/client.json";
+    let jwks = json!({"keys": [{"kty": "RSA", "kid": "k1", "alg": "RS256", "use": "sig", "n": TEST_KEY_N, "e": "AQAB"}]});
+    sqlx::query("INSERT INTO oauth_clients (id, source, name, redirect_uris, metadata) VALUES ($1, 'cimd', 'Signed Agent', $2, $3)")
+        .bind(cid)
+        .bind(vec![REDIRECT.to_string()])
+        .bind(json!({"client_name": "Signed Agent", "token_endpoint_auth_method": "private_key_jwt", "jwks": jwks}))
+        .execute(&app.state.db)
+        .await
+        .unwrap();
+
+    let jwt_type = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
+    let code = approve(&mut owner, &authorize(&app, cid, "problems:read").await, &["problems:read"]).await;
+    // Without an assertion the client is refused (and the code is not consumed).
+    let r = exchange(&app, cid, &code, VERIFIER).await;
+    assert_eq!(r.body["error"], "invalid_client", "{}", r.text);
+    // Wrong audience.
+    let bad = assertion(cid, "https://elsewhere.example/token", "j0");
+    let r = token_request(
+        &app,
+        &[
+            ("grant_type", "authorization_code"),
+            ("code", &code),
+            ("client_id", cid),
+            ("code_verifier", VERIFIER),
+            ("client_assertion_type", jwt_type),
+            ("client_assertion", &bad),
+        ],
+    )
+    .await;
+    assert_eq!(r.body["error"], "invalid_client", "{}", r.text);
+    // Valid assertion (client_id taken from the assertion's iss).
+    let a1 = assertion(cid, "http://app.test/oauth/token", "j1");
+    let r = token_request(
+        &app,
+        &[("grant_type", "authorization_code"), ("code", &code), ("code_verifier", VERIFIER), ("client_assertion_type", jwt_type), ("client_assertion", &a1)],
+    )
+    .await;
+    assert_eq!(r.status, StatusCode::OK, "{}", r.text);
+    let refresh = r.body["refresh_token"].as_str().unwrap().to_string();
+    // A replayed assertion is refused; a fresh one (issuer as audience) refreshes.
+    let r =
+        token_request(&app, &[("grant_type", "refresh_token"), ("refresh_token", &refresh), ("client_assertion_type", jwt_type), ("client_assertion", &a1)])
+            .await;
+    assert_eq!(r.body["error"], "invalid_client", "{}", r.text);
+    let a2 = assertion(cid, "http://app.test", "j2");
+    let r =
+        token_request(&app, &[("grant_type", "refresh_token"), ("refresh_token", &refresh), ("client_assertion_type", jwt_type), ("client_assertion", &a2)])
+            .await;
+    assert_eq!(r.status, StatusCode::OK, "{}", r.text);
+    let r = mcp(&app, r.body["access_token"].as_str().unwrap(), "tools/list", json!({})).await;
+    assert!(tool_names(&r).contains(&"list_problems".to_string()));
+}

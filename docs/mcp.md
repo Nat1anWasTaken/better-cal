@@ -45,9 +45,9 @@ Agent 只看得到連線權限內的工具。API 的錯誤（problem+json，含 
 | `GET /.well-known/oauth-authorization-server`（另有 `openid-configuration`） | RFC 8414 |
 | `POST /oauth/register` | RFC 7591 動態註冊（每個 IP 每小時 30 次；7 天內沒有完成授權的會被清除） |
 | `GET /oauth/authorize` | 授權碼 + PKCE S256（必填）、RFC 8707 `resource`、RFC 9207 `iss` |
-| `POST /oauth/token` | `authorization_code`、`refresh_token`；client 驗證可用 `none`、`client_secret_post`、`client_secret_basic` |
+| `POST /oauth/token` | `authorization_code`、`refresh_token`；client 驗證可用 `none`、`client_secret_post`、`client_secret_basic`、`private_key_jwt`（RFC 7523，ChatGPT 使用） |
 | `POST /oauth/revoke` | RFC 7009（撤銷任一 token 即中斷整個連線） |
 
-`client_id` 是 https 網址時，視為 Client ID Metadata Document：第一次使用時抓取並快取一天。
+`client_id` 是 https 網址時，視為 Client ID Metadata Document：第一次使用時抓取並快取一天。文件宣告 `private_key_jwt` 時（例如 ChatGPT），token 請求必須附上以文件中 `jwks`／`jwks_uri` 的金鑰簽署的 `client_assertion`；伺服器驗證簽章、`iss`＝`sub`＝client_id、`aud`、到期時間，並拒絕重複使用的 `jti`。
 
 安全設計見 [security.md](security.md)。
