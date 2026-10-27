@@ -110,6 +110,18 @@ export function PolicyEditor({ value, onChange, errors = {}, level, idPrefix }: 
           </SelectContent>
         </Select>
       </Field>
+      <Field label="練習場">
+        <Select value={value.playground == null ? INHERIT : value.playground ? 'on' : 'off'} onValueChange={(v) => set({ playground: v === INHERIT ? null : v === 'on' })}>
+          <SelectTrigger className="w-72" aria-label="練習場">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={INHERIT}>{level === 'site' ? '開啟（預設）' : '沿用上一層設定'}</SelectItem>
+            <SelectItem value="on">開啟：可以自由編譯、執行任何 C 程式</SelectItem>
+            <SelectItem value="off">關閉：看不到練習場</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
     </div>
   )
 }

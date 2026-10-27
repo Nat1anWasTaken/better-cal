@@ -60,18 +60,20 @@ pub struct SiteInfo {
     pub leaderboard: bool,
     /// The leaderboard round in progress, if any.
     pub open_round_id: Option<Uuid>,
+    /// This user may use the C playground.
+    pub playground: bool,
 }
 
 /// Site name, announcement and which problem set to open by default.
 #[utoipa::path(get, path = "/site", tag = TAG_STUDENT, responses((status = 200, body = SiteInfo)))]
 async fn site(State(st): State<AppState>, MaybePrincipal(p): MaybePrincipal) -> ApiResult<Json<SiteInfo>> {
     let snap = st.snapshot();
-    let (default_set_id, leaderboard) = match &p {
+    let (default_set_id, leaderboard, playground) = match &p {
         Some(p) => {
             let policy = repo::policy_for(&st, p.user_id).await?;
-            (policy.default_set_id.value, p.is_owner() || policy.leaderboard.value)
+            (policy.default_set_id.value, p.is_owner() || policy.leaderboard.value, p.is_owner() || policy.playground.value)
         }
-        None => (snap.active_set_id, false),
+        None => (snap.active_set_id, false, false),
     };
     let open_round_id = if leaderboard { super::leaderboard::open_round(&st).await?.map(|r| r.id) } else { None };
     Ok(Json(SiteInfo {
@@ -82,6 +84,7 @@ async fn site(State(st): State<AppState>, MaybePrincipal(p): MaybePrincipal) -> 
         config_version: snap.version,
         leaderboard,
         open_round_id,
+        playground,
     }))
 }
 

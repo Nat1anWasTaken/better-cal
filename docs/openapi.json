@@ -3778,6 +3778,72 @@
         ]
       }
     },
+    "/api/v1/playground/run": {
+      "post": {
+        "tags": [
+          "playground"
+        ],
+        "summary": "Compile and run a program once with the real toolchain, and explain any\nproblems with teaching cards. There is no expected output, so only compile,\nwarning and runtime cards (crash, time/memory/output limit) can appear.",
+        "operationId": "run",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaygroundRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaygroundResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/problem-sets": {
       "get": {
         "tags": [
@@ -5311,7 +5377,8 @@
           "raw_expanded",
           "runs_per_minute",
           "submits_per_minute",
-          "leaderboard"
+          "leaderboard",
+          "playground"
         ],
         "properties": {
           "auto_reveal_hints": {
@@ -5339,6 +5406,9 @@
           },
           "max_hint_levels": {
             "$ref": "#/components/schemas/Sourced_Option_u8"
+          },
+          "playground": {
+            "$ref": "#/components/schemas/Sourced_bool"
           },
           "raw_expanded": {
             "$ref": "#/components/schemas/Sourced_bool"
@@ -6310,6 +6380,145 @@
           }
         }
       },
+      "PlaygroundLimits": {
+        "type": "object",
+        "required": [
+          "time_ms",
+          "memory_kb",
+          "output_kb"
+        ],
+        "properties": {
+          "memory_kb": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "output_kb": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "time_ms": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "PlaygroundRequest": {
+        "type": "object",
+        "required": [
+          "source"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "A complete C program (C17, compiled like submissions)."
+          },
+          "stdin": {
+            "type": "string",
+            "description": "Standard input for the program."
+          }
+        },
+        "additionalProperties": false
+      },
+      "PlaygroundResult": {
+        "type": "object",
+        "required": [
+          "compile_success",
+          "cards",
+          "auto_reveal_hints",
+          "raw_expanded",
+          "limits"
+        ],
+        "properties": {
+          "auto_reveal_hints": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CardView"
+            },
+            "description": "Teaching cards. `hints` holds every hint this user may see; show the\nfirst `auto_reveal_hints` and reveal the rest on request."
+          },
+          "compile_success": {
+            "type": "boolean"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/PlaygroundLimits"
+          },
+          "raw_expanded": {
+            "type": "boolean"
+          },
+          "run": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PlaygroundRun",
+                "description": "Absent when the program did not compile."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "PlaygroundRun": {
+        "type": "object",
+        "required": [
+          "status",
+          "time_ms",
+          "memory_kb",
+          "stdout",
+          "stdout_truncated",
+          "stderr",
+          "stderr_truncated"
+        ],
+        "properties": {
+          "exit_code": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "memory_kb": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "signal": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "status": {
+            "type": "string",
+            "description": "`ok`, `non_zero_exit`, `signaled`, `time_limit`, `memory_limit`, `output_limit` or `sandbox_error`."
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stderr_truncated": {
+            "type": "boolean"
+          },
+          "stdout": {
+            "type": "string"
+          },
+          "stdout_truncated": {
+            "type": "boolean"
+          },
+          "time_ms": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
       "PolicyPatch": {
         "type": "object",
         "description": "Every field is optional; unset fields fall through to the next level.",
@@ -6367,6 +6576,13 @@
             "format": "int32",
             "description": "Maximum hint levels a student may reveal (`None` = all).",
             "minimum": 0
+          },
+          "playground": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Allow the free-form C playground."
           },
           "raw_expanded": {
             "type": [
@@ -7544,7 +7760,8 @@
           "site_name",
           "announcement_md",
           "config_version",
-          "leaderboard"
+          "leaderboard",
+          "playground"
         ],
         "properties": {
           "active_set_id": {
@@ -7583,6 +7800,10 @@
             "format": "uuid",
             "description": "The leaderboard round in progress, if any."
           },
+          "playground": {
+            "type": "boolean",
+            "description": "This user may use the C playground."
+          },
           "site_name": {
             "type": "string"
           }
@@ -7619,6 +7840,7 @@
                 "io",
                 "variables"
               ],
+              "playground": true,
               "raw_expanded": false,
               "runs_per_minute": 10,
               "submits_per_minute": 5
@@ -8653,6 +8875,10 @@
     {
       "name": "submissions",
       "description": "Run / Submit and results with teaching cards"
+    },
+    {
+      "name": "playground",
+      "description": "Free-form C: compile and run any program, with teaching cards"
     },
     {
       "name": "admin: problems",

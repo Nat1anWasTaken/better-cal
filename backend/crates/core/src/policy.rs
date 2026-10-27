@@ -40,6 +40,9 @@ pub struct PolicyPatch {
     /// Show the leaderboard and list this student on it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub leaderboard: Option<bool>,
+    /// Allow the free-form C playground.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub playground: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
@@ -69,6 +72,7 @@ pub struct EffectivePolicy {
     pub runs_per_minute: Sourced<u32>,
     pub submits_per_minute: Sourced<u32>,
     pub leaderboard: Sourced<bool>,
+    pub playground: Sourced<bool>,
 }
 
 /// System-wide hard caps that online settings cannot exceed.
@@ -129,6 +133,7 @@ pub fn effective(site: &PolicyPatch, cohort: Option<&PolicyPatch>, student: Opti
         submits_per_minute: pick(site.submits_per_minute.or(d.submits_per_minute).unwrap_or(5), c.submits_per_minute, s.submits_per_minute)
             .clamp_value(MAX_SUBMITS_PER_MINUTE),
         leaderboard: pick(site.leaderboard.or(d.leaderboard).unwrap_or(true), c.leaderboard, s.leaderboard),
+        playground: pick(site.playground.or(d.playground).unwrap_or(true), c.playground, s.playground),
     }
 }
 
@@ -151,6 +156,7 @@ pub fn site_defaults() -> PolicyPatch {
         runs_per_minute: Some(10),
         submits_per_minute: Some(5),
         leaderboard: Some(true),
+        playground: Some(true),
     }
 }
 
@@ -188,6 +194,10 @@ mod tests {
         assert!(!effective(&site, Some(&off), None, None).leaderboard.value);
         let on = PolicyPatch { leaderboard: Some(true), ..Default::default() };
         assert_eq!(effective(&site, Some(&off), Some(&on), None).leaderboard, Sourced { value: true, source: Source::Student });
+        assert_eq!(e.playground, Sourced { value: true, source: Source::Site });
+        let no_play = PolicyPatch { playground: Some(false), ..Default::default() };
+        assert_eq!(effective(&site, Some(&no_play), None, None).playground, Sourced { value: false, source: Source::Cohort });
+        assert!(effective(&site, Some(&no_play), Some(&PolicyPatch { playground: Some(true), ..Default::default() }), None).playground.value);
     }
 
     #[test]

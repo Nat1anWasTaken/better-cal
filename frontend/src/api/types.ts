@@ -113,6 +113,9 @@ export interface FeedbackCard {
   raw: RawDiagnostic[]
 }
 
+export type PlaygroundRun = S['PlaygroundRun']
+export type PlaygroundResult = Omit<S['PlaygroundResult'], 'cards'> & { cards: FeedbackCard[] }
+
 export type SubmissionView = Omit<S['SubmissionView'], 'cards' | 'blanks'> & {
   cards: FeedbackCard[]
   blanks?: Record<string, string> | null

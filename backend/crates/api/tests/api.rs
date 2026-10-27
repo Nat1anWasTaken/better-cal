@@ -626,3 +626,73 @@ async fn openapi_document_matches_committed_copy() {
         "docs/openapi.json is stale: run `cyculcal openapi > docs/openapi.json`"
     );
 }
+
+#[tokio::test]
+async fn playground_runs_any_program_with_teaching_cards() {
+    let app = app().await;
+    let r = app.anon().post("/api/v1/playground/run", json!({"source": "int main(void){return 0;}"})).await;
+    assert_eq!(r.status, StatusCode::UNAUTHORIZED);
+
+    let mut s = app.student("p1").await;
+    assert_eq!(s.get("/api/v1/site").await.body["playground"], true);
+
+    let ok = s
+        .post(
+            "/api/v1/playground/run",
+            json!({"source": "#include <stdio.h>\nint main(void){int a,b;scanf(\"%d %d\",&a,&b);printf(\"%d\\n\",a+b);return 0;}\n", "stdin": "2 40\n"}),
+        )
+        .await;
+    assert_eq!(ok.status, StatusCode::OK, "{}", ok.text);
+    assert_eq!(ok.body["compile_success"], true);
+    assert_eq!(ok.body["run"]["status"], "ok");
+    assert_eq!(ok.body["run"]["stdout"], "42\n");
+    assert_eq!(ok.body["cards"].as_array().unwrap().len(), 0, "{}", ok.text);
+
+    let broken = s
+        .post(
+            "/api/v1/playground/run",
+            json!({"source": "#include <stdio.h>\n\nint main(void) {\n    int a = 1\n    printf(\"%d\\n\", a);\n    return 0;\n}\n"}),
+        )
+        .await;
+    assert_eq!(broken.status, StatusCode::OK, "{}", broken.text);
+    assert_eq!(broken.body["compile_success"], false);
+    assert!(broken.body["run"].is_null());
+    let card = &broken.body["cards"][0];
+    assert_eq!(card["rule"], "syntax.missing_semicolon", "{}", broken.text);
+    assert!(card["span"]["line"].is_number());
+    assert_eq!(
+        card["hints"].as_array().unwrap().len(),
+        card["hints_allowed"].as_u64().unwrap() as usize,
+        "every allowed hint is sent; the client reveals them"
+    );
+
+    let segv = s.post("/api/v1/playground/run", json!({"source": "int main(void){ int *p = 0; return *p; }\n"})).await;
+    assert_eq!(segv.body["run"]["status"], "signaled", "{}", segv.text);
+    assert_eq!(segv.body["cards"][0]["rule"], "run.segfault", "{}", segv.text);
+    assert!(!segv.text.contains("隱藏"), "no hidden-test wording without hidden tests: {}", segv.text);
+
+    let empty = s.post("/api/v1/playground/run", json!({"source": "  "})).await;
+    assert_eq!(empty.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(empty.body["errors"][0]["pointer"], "/source");
+    let huge = s.post("/api/v1/playground/run", json!({"source": "x".repeat(65 * 1024)})).await;
+    assert_eq!(huge.status, StatusCode::UNPROCESSABLE_ENTITY);
+
+    // Per-minute limit (default 10 runs; 3 used above, rejected requests are free).
+    let mut statuses = vec![];
+    for _ in 0..8 {
+        statuses.push(s.post("/api/v1/playground/run", json!({"source": "int main(void){return 0;}"})).await.status);
+    }
+    assert_eq!(statuses.iter().filter(|c| **c == StatusCode::OK).count(), 7, "{statuses:?}");
+    assert_eq!(statuses.last(), Some(&StatusCode::TOO_MANY_REQUESTS));
+
+    // Owners can turn it off per student.
+    let mut owner = app.owner().await;
+    let p1: uuid::Uuid = sqlx::query_scalar("SELECT id FROM users WHERE username = 'p1'").fetch_one(&app.state.db).await.unwrap();
+    let r = owner.put(&format!("/api/v1/admin/users/{p1}/policy"), json!({"playground": false})).await;
+    assert!(r.status.is_success(), "{}", r.text);
+    assert_eq!(s.get("/api/v1/site").await.body["playground"], false);
+    let r = s.post("/api/v1/playground/run", json!({"source": "int main(void){return 0;}"})).await;
+    assert_eq!(r.status, StatusCode::FORBIDDEN);
+    let r = owner.post("/api/v1/playground/run", json!({"source": "int main(void){return 0;}"})).await;
+    assert_eq!(r.status, StatusCode::OK, "owners can always use it: {}", r.text);
+}

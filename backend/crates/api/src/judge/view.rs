@@ -114,6 +114,38 @@ pub struct CardView {
     pub raw: Vec<RawDiagnostic>,
 }
 
+/// A rendered card as the viewer sees it: `shown` of its hints revealed, and
+/// at most `allowed` revealable.
+pub fn card_view(c: diagnostics::Card, shown: usize, allowed: usize) -> CardView {
+    CardView {
+        finding_id: c.finding_id,
+        rule: c.rule,
+        category: c.category,
+        severity: c.severity,
+        confidence: c.confidence,
+        confidence_label: c.confidence_label,
+        title: c.title,
+        what: c.what,
+        cause: c.cause,
+        where_text: c.where_text,
+        why: c.why,
+        next_steps: c.next_steps,
+        hints_total: c.hints.len(),
+        hints: c.hints.into_iter().take(shown).collect(),
+        hints_allowed: allowed,
+        span: c.span,
+        precision: c.precision,
+        precision_note: c.precision_note,
+        in_fixed_region: c.in_fixed_region,
+        fixed_region_note: c.fixed_region_note,
+        primary: c.primary,
+        maybe_cascade_of: c.maybe_cascade_of,
+        cascade_note: c.cascade_note,
+        test: c.test,
+        raw: c.raw,
+    }
+}
+
 #[derive(Debug, Serialize, ToSchema)]
 pub struct SubmissionView {
     pub id: Uuid,
@@ -251,33 +283,7 @@ pub fn build(row: &SubmissionRow, audience: Audience, ctx: &ViewContext<'_>) -> 
             let total = c.hints.len();
             let allowed = ctx.policy.max_hint_levels.value.map(|m| m as usize).unwrap_or(total).min(total);
             let shown = ctx.revealed.get(&c.finding_id).copied().unwrap_or(0).max(auto).min(allowed);
-            cards.push(CardView {
-                finding_id: c.finding_id,
-                rule: c.rule,
-                category: c.category,
-                severity: c.severity,
-                confidence: c.confidence,
-                confidence_label: c.confidence_label,
-                title: c.title,
-                what: c.what,
-                cause: c.cause,
-                where_text: c.where_text,
-                why: c.why,
-                next_steps: c.next_steps,
-                hints: c.hints.into_iter().take(shown).collect(),
-                hints_total: total,
-                hints_allowed: allowed,
-                span: c.span,
-                precision: c.precision,
-                precision_note: c.precision_note,
-                in_fixed_region: c.in_fixed_region,
-                fixed_region_note: c.fixed_region_note,
-                primary: c.primary,
-                maybe_cascade_of: c.maybe_cascade_of,
-                cascade_note: c.cascade_note,
-                test: c.test,
-                raw: c.raw,
-            });
+            cards.push(card_view(c, shown, allowed));
         }
     }
 

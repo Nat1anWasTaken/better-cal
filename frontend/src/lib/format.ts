@@ -54,3 +54,19 @@ export function templatePreview(t: string): string {
     .replace(/`/g, '')
     .trim()
 }
+
+const RUN_STATUS: Record<string, { label: string; tone: Tone }> = {
+  ok: { label: '執行完成', tone: 'success' },
+  non_zero_exit: { label: '結束代碼不是 0', tone: 'warning' },
+  signaled: { label: '執行時崩潰', tone: 'error' },
+  time_limit: { label: '超過時間限制', tone: 'error' },
+  memory_limit: { label: '超過記憶體限制', tone: 'error' },
+  output_limit: { label: '輸出太多', tone: 'error' },
+  sandbox_error: { label: '服務異常', tone: 'neutral' },
+}
+
+/** One playground run (no expected output, so no right/wrong). */
+export function runStatusInfo(status: string, exitCode?: number | null): { label: string; tone: Tone } {
+  const info = RUN_STATUS[status] ?? { label: status, tone: 'neutral' as Tone }
+  return status === 'non_zero_exit' && exitCode != null ? { ...info, label: `${info.label}（${exitCode}）` } : info
+}

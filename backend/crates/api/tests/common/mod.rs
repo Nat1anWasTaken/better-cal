@@ -67,6 +67,7 @@ pub async fn app() -> TestApp {
         max_attempts: 2,
         public_url: Some("http://app.test".into()),
         client_ip_header: None,
+        playground_concurrency: 2,
     };
     let state = ccal_api::init_state(cfg).await.unwrap();
     ccal_api::judge::worker::spawn_workers(&state);

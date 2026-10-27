@@ -17,6 +17,7 @@ const ProblemPage = lazy(() => import('@/pages/ProblemPage').then((m) => ({ defa
 const MySubmissionsPage = lazy(() => import('@/pages/MySubmissions').then((m) => ({ default: m.MySubmissionsPage })))
 const SubmissionDetailPage = lazy(() => import('@/pages/MySubmissions').then((m) => ({ default: m.SubmissionDetailPage })))
 const PreferencesPage = lazy(() => import('@/pages/Preferences').then((m) => ({ default: m.PreferencesPage })))
+const PlaygroundPage = lazy(() => import('@/pages/Playground').then((m) => ({ default: m.PlaygroundPage })))
 const LeaderboardPage = lazy(() => import('@/pages/Leaderboard').then((m) => ({ default: m.LeaderboardPage })))
 
 const lazyPage = (el: React.ReactNode) => <Suspense fallback={<Loading />}>{el}</Suspense>
@@ -62,6 +63,7 @@ export function App() {
           <Route path="/me/submissions" element={lazyPage(<MySubmissionsPage />)} />
           <Route path="/me/submissions/:id" element={lazyPage(<SubmissionDetailPage />)} />
           <Route path="/me/progress" element={<MyProgressPage />} />
+          <Route path="/playground" element={lazyPage(<PlaygroundPage />)} />
           <Route path="/leaderboard" element={lazyPage(<LeaderboardPage />)} />
           <Route path="/rounds/:roundId" element={lazyPage(<LeaderboardPage />)} />
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -19,7 +19,7 @@ import { useTheme } from '@/hooks/useTheme'
 import { cn } from '@/lib/utils'
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
-  cn('rounded-md px-2.5 py-1.5 text-sm hover:bg-accent', isActive ? 'font-medium text-foreground' : 'text-muted-foreground')
+  cn('shrink-0 rounded-md px-2 py-1.5 text-sm whitespace-nowrap hover:bg-accent sm:px-2.5', isActive ? 'font-medium text-foreground' : 'text-muted-foreground')
 
 export function UserMenu() {
   const { me, isOwner, logout } = useAuth()
@@ -102,7 +102,7 @@ export function AppShell() {
       <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur">
         <div className="flex h-12 items-center gap-3 px-4">
           <Brand />
-          <nav aria-label="主要導覽" className="flex items-center gap-0.5">
+          <nav aria-label="主要導覽" className="flex min-w-0 items-center gap-0.5 overflow-x-auto">
             <NavLink to="/" end className={navClass}>
               題目集
             </NavLink>
@@ -112,13 +112,18 @@ export function AppShell() {
             <NavLink to="/me/progress" className={navClass}>
               進度
             </NavLink>
+            {site.data?.playground && (
+              <NavLink to="/playground" className={navClass}>
+                練習場
+              </NavLink>
+            )}
             {site.data?.leaderboard && (
               <NavLink to="/leaderboard" className={navClass}>
                 排行榜
               </NavLink>
             )}
           </nav>
-          <div className="ml-auto">
+          <div className="ml-auto shrink-0">
             <UserMenu />
           </div>
         </div>

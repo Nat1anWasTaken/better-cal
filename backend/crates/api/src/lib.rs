@@ -49,12 +49,14 @@ pub async fn init_state(cfg: Config) -> anyhow::Result<AppState> {
     MIGRATOR.run(&db).await?;
     let snapshot = catalog_store::load_snapshot(&db).await?;
     let runner = RunnerClient::new(&cfg.runner_url, &cfg.runner_token, cfg.runner_timeout);
+    let playground = crate::routes::playground::Gate::new(cfg.playground_concurrency);
     Ok(AppState(Arc::new(Inner {
         db,
         cfg,
         runner,
         config: ArcSwap::from_pointee(snapshot),
         limiter: RateLimiter::default(),
+        playground,
         judge_notify: tokio::sync::Notify::new(),
         judge_health: tokio::sync::RwLock::new((JudgeHealth::Unknown, None)),
     })))

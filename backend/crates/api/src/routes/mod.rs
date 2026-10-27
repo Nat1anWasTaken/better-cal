@@ -6,12 +6,14 @@ pub mod admin_system;
 pub mod auth;
 pub mod leaderboard;
 pub mod oauth_consent;
+pub mod playground;
 pub mod student;
 pub mod submissions;
 
 pub const TAG_AUTH: &str = "auth";
 pub const TAG_STUDENT: &str = "student";
 pub const TAG_SUBMISSIONS: &str = "submissions";
+pub const TAG_PLAYGROUND: &str = "playground";
 pub const TAG_PROBLEMS: &str = "admin: problems";
 pub const TAG_SETS: &str = "admin: problem sets";
 pub const TAG_IMPORT: &str = "admin: import/export";

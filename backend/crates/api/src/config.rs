@@ -24,6 +24,8 @@ pub struct Config {
     /// Header carrying the client address, set by the reverse proxy in front of
     /// the app (e.g. `cf-connecting-ip`). Unset: the last `X-Forwarded-For` hop.
     pub client_ip_header: Option<String>,
+    /// Playground runs allowed at once (they share the runner with judging).
+    pub playground_concurrency: usize,
 }
 
 fn env(key: &str) -> Option<String> {
@@ -48,6 +50,7 @@ impl Config {
             max_attempts: env("JUDGE_MAX_ATTEMPTS").and_then(|v| v.parse().ok()).unwrap_or(3),
             public_url: env("PUBLIC_URL").map(|v| v.trim().trim_end_matches('/').to_string()),
             client_ip_header: env("CLIENT_IP_HEADER").map(|v| v.trim().to_ascii_lowercase()),
+            playground_concurrency: env("PLAYGROUND_CONCURRENCY").and_then(|v| v.parse().ok()).unwrap_or(2).clamp(1, 32),
         })
     }
 }
