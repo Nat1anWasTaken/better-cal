@@ -1,0 +1,119 @@
+# 警告（lint）：程式可以執行，但行為可能跟你想的不一樣。
+
+[rules."warn.unused_variable"]
+title = "變數 `{ident}` 宣告了但{?set_only}沒有真的被拿來用{/set_only}{!set_only}沒有使用{/set_only}"
+what = "第 {line} 行宣告了 `{ident}`，但程式{?set_only}只有改變它的值，從來沒有讀取它{/set_only}{!set_only}之後都沒有用到它{/set_only}。"
+cause = "可能是不需要的變數，也可能是原本想用它，卻不小心用了另一個變數。"
+where = "第 {line} 行。"
+why = "這不會讓程式出錯，但常常代表程式的邏輯跟你想的不一樣。"
+next_steps = ["想一想 `{ident}` 原本的用途。如果用不到，可以刪掉它。", "如果應該要用到它，檢查程式裡是否把它寫成了其他名稱。"]
+hints = ["這是提醒，不是錯誤。先處理其他問題也沒關係。"]
+
+[rules."warn.unused_parameter"]
+title = "參數 `{ident}` 沒有被使用"
+what = "函式的參數 `{ident}` 沒有在函式裡用到。"
+where = "第 {line} 行。"
+why = "呼叫函式時傳進來的值，如果沒有被使用，可能代表計算漏掉了某個部分。"
+next_steps = ["確認函式的計算是否需要用到 `{ident}`。"]
+hints = ["這是提醒，不一定是錯誤。"]
+
+[rules."warn.uninitialized"]
+title = "變數 `{ident}` 還沒有值就被使用"
+what = "第 {line} 行使用了 `{ident}`，但{?maybe}在某些情況下{/maybe}它在這之前沒有被給過任何值。"
+cause = "{?maybe}可能某些情況下（例如某個 if 沒有成立時）`{ident}` 沒有被設定值。{/maybe}{!maybe}`{ident}` 宣告時沒有給起始值，之後在給值之前就被拿來使用了。{/maybe}"
+where = "`{ident}` 的宣告處，以及第 {line} 行。"
+why = "在 C 語言裡，沒有給起始值的區域變數，裡面是「不確定的值」（可能是任何數字），不會自動是 0。拿它來計算，結果就會不可預測。"
+next_steps = ["找到 `{ident}` 的宣告，想一想它一開始應該是多少。", "如果它是用來累加的（例如總和），起始值通常是 0。"]
+hints = ["範例（跟你的程式無關）：`int sum = 0;` 宣告的同時給起始值。"]
+
+[rules."warn.assign_in_condition"]
+title = "條件裡用了 `=`，你是不是想比較？"
+what = "第 {line} 行的條件裡使用了 `=`（指定），而不是 `==`（比較）。"
+cause = "很可能想寫的是「比較是否相等」。"
+where = "第 {line} 行的條件。"
+why = "在 C 語言裡，`=` 是「把右邊的值放進左邊」，`==` 才是「比較兩邊是否相等」。在條件裡寫 `=` 會改變變數的值，而且條件的結果可能永遠成立或永遠不成立。"
+next_steps = ["看第 {line} 行的條件，確認你要的是「比較」還是「指定」。"]
+hints = ["比較是否相等用兩個等號：`==`。範例（跟你的程式無關）：`if (score == 100)`。"]
+
+[rules."warn.empty_body"]
+title = "`{keyword}` 後面多了一個分號"
+what = "第 {line} 行的 `{keyword} (...)` 後面直接接了分號 `;`，所以 `{keyword}` 控制的是一個「什麼都不做」的空指令。"
+cause = "很可能是不小心多打了 `;`，導致下一行無論條件是否成立都會執行。"
+where = "第 {line} 行條件括號 `)` 的後面。"
+why = "`{keyword} (條件)` 後面的第一個指令才會受條件控制。一個單獨的 `;` 本身就是一個（空的）指令。"
+next_steps = ["看第 {line} 行 `)` 後面是不是緊接著 `;`。"]
+hints = ["`if (...)` 這一行的結尾不需要分號；分號要寫在它控制的指令後面。"]
+
+[rules."warn.misleading_indentation"]
+title = "縮排看起來和實際執行的範圍不同"
+what = "第 {line} 行的 `{keyword}` 只控制緊接著的一個指令，但{?next_line}第 {next_line} 行{/next_line}{!next_line}下一行{/next_line}的縮排讓它看起來也受控制。"
+cause = "很可能想讓多個指令都受 `{keyword}` 控制，卻沒有用 {{ }} 把它們包起來。"
+where = "第 {line} 行{?next_line}到第 {next_line} 行{/next_line}。"
+why = "C 語言不看縮排。沒有 {{ }} 時，`{keyword}` 只控制下一個指令；要控制多個指令，必須用 {{ }} 包起來。"
+next_steps = ["決定哪些指令應該受 `{keyword}` 控制，用 {{ }} 把它們包起來。"]
+hints = ["習慣上，就算只有一行，也用 {{ }} 包起來，可以避免這種問題。"]
+
+[rules."warn.sign_compare"]
+title = "比較了有號和無號的數"
+what = "第 {line} 行比較的兩個值，一個可以是負數（例如 `int`），另一個不能是負數（例如 `strlen` 的結果）。"
+where = "第 {line} 行。"
+why = "這兩種數在比較時，C 會先把它們轉成同一種型別，負數可能會變成很大的正數，讓比較結果出乎意料。對一般的迴圈通常沒問題。"
+next_steps = ["如果變數不會是負數，這個提醒通常可以先不管。"]
+hints = ["進階：可以把迴圈變數宣告成 `size_t`，或把 `strlen(...)` 的結果先存進 `int` 變數。"]
+
+[rules."warn.chained_comparison"]
+title = "`a < x < b` 的意思跟數學不一樣"
+what = "第 {line} 行把兩個比較連在一起寫（像 `0 < x < 10`）。"
+cause = "很可能是想表示「x 在某個範圍內」，但 C 語言不是這樣理解的。"
+where = "第 {line} 行的條件。"
+why = "C 語言會先算出 `0 < x` 的結果（0 或 1），再拿這個 0 或 1 去和 10 比較，所以條件幾乎永遠成立。"
+next_steps = ["把範圍拆成兩個比較，再用「而且」連起來。"]
+hints = ["「而且」在 C 語言裡寫成 `&&`。範例（跟你的程式無關）：`if (age >= 13 && age <= 19)`。"]
+
+[rules."warn.no_effect"]
+title = "這一行算出了結果，卻沒有被使用"
+what = "第 {line} 行的指令算出一個值之後什麼都沒做。"
+cause = "{?has_equality}這一行有 `==`（比較）。你可能想寫的是 `=`（把值存進變數）。{/has_equality}{!has_equality}可能少寫了要把結果存起來或印出來的部分，或是前面還有其他錯誤。{/has_equality}"
+where = "第 {line} 行。"
+why = "{?has_equality}`==` 只會比較兩邊是否相等，不會改變任何變數。{/has_equality}{!has_equality}單獨的算式（例如 `x + 1;`）不會改變任何東西。{/has_equality}"
+next_steps = ["想一想這一行想要做什麼：改變變數的值？還是印出結果？"]
+hints = ["把值存進變數用一個等號：`x = 5;`；比較用兩個等號：`x == 5`。"]
+
+[rules."warn.loop_overrun"]
+title = "迴圈可能多跑了一次"
+what = "編譯器發現迴圈在第 {iteration} 次重複時會做出不安全的事情（未定義行為），通常是讀寫到陣列範圍之外。"
+cause = "可能是迴圈的條件多算了一次，例如用了 `<=`，但應該用 `<`。"
+where = "第 {line} 行附近的迴圈。"
+why = "長度為 N 的陣列，合法的位置是 0 到 N-1。存取第 N 個位置會超出範圍，結果無法預測。"
+next_steps = ["檢查迴圈的起點和終點：最後一次執行時，用到的位置是多少？"]
+hints = ["例如 `int a[5];` 合法的位置是 `a[0]` 到 `a[4]`。"]
+variants = [
+  { when_concepts = ["arrays"], hints = ["陣列 `int a[5]` 合法的索引是 0 到 4。檢查迴圈最後一次的索引值。", "迴圈的條件常寫成 `i < 長度`，而不是 `i <= 長度`。"] },
+]
+
+[rules."lint.loop_empty_body"]
+title = "`{keyword}` 後面多了一個分號"
+what = "第 {line} 行的 `{keyword} (...)` 後面直接接了分號 `;`，所以迴圈重複執行的是「什麼都不做」，下面的 {{ }} 只會執行一次。"
+cause = "很可能是不小心多打了 `;`。"
+where = "第 {line} 行，條件括號 `)` 的後面。"
+why = "迴圈只會重複它後面的第一個指令。一個單獨的 `;` 本身就是一個（空的）指令。"
+next_steps = ["看第 {line} 行 `)` 後面是不是緊接著 `;`。"]
+hints = ["`for (...)` 和 `while (...)` 這一行的結尾不需要分號（`do {{ }} while (...);` 是唯一的例外）。"]
+
+[rules."lint.while_scanf_no_compare"]
+title = "讀完輸入後，這個迴圈可能停不下來"
+what = "第 {line} 行用 `while (scanf(...))` 當作迴圈條件，但沒有檢查 scanf 回傳的數字。"
+cause = "輸入讀完時，scanf 會回傳 EOF（通常是 -1）。在 C 語言裡，不是 0 的數都算「成立」，所以迴圈可能永遠不會結束。"
+where = "第 {line} 行。"
+why = "scanf 會回傳「成功讀到幾個值」。讀到資料時是 1、2…；沒有資料可讀時是 EOF（-1），這兩種情況都不是 0。"
+next_steps = ["想一想：「成功讀到一個數」時，scanf 回傳的是多少？讓迴圈條件只在這種情況成立。"]
+hints = ["可以把 scanf 的回傳值和「預期讀到的數量」比較，例如 `scanf(...) == 1`。"]
+
+[rules."lint.scanf_trailing_whitespace"]
+title = "scanf 格式結尾的空白或 \\n 會讓程式等待"
+what = "第 {line} 行的 scanf 格式 {format} 結尾有空白或 `\\n`。"
+cause = "在自己的電腦上互動輸入時，程式會看起來「卡住」，因為它會一直等到你輸入下一個非空白的字。評測系統的輸入是一次給完的，所以通常不受影響。"
+where = "第 {line} 行。"
+why = "scanf 格式中的空白（包括 `\\n`）代表「跳過所有空白，直到遇到下一個不是空白的字」。"
+next_steps = ["通常不需要在 scanf 格式的結尾加 `\\n`。"]
+hints = ["printf 需要 `\\n` 來換行；scanf 一般不需要。"]

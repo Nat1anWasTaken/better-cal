@@ -1,0 +1,1 @@
+[{"kind": "warning", "locations": [{"caret": {"byte-column": 1, "display-column": 1, "line": 7, "file": "main.c", "column": 1}}], "column-origin": 1, "option": "-Wreturn-type", "escape-source": false, "children": [], "option_url": "https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wreturn-type", "message": "control reaches end of non-void function"}]

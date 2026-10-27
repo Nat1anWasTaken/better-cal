@@ -1,0 +1,13 @@
+# Local development: only db + runner in containers, API and Vite run on the host.
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db runner
+services:
+  db:
+    ports:
+      - "127.0.0.1:55432:5432"
+  runner:
+    networks: [judge, devhost]
+    ports:
+      - "127.0.0.1:17070:7070"
+
+networks:
+  devhost:

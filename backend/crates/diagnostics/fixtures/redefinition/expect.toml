@@ -1,0 +1,5 @@
+compile_success = false
+primary = "ident.redefinition"
+[vars]
+ident = "x"
+previous_line = "4"

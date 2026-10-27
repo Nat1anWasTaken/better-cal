@@ -1,0 +1,4 @@
+compile_success = true
+primary = "warn.no_effect"
+[vars]
+has_equality = "1"

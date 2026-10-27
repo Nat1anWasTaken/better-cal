@@ -1,0 +1,8 @@
+# The "'b' is used uninitialized" warning is a consequence and is merged.
+compile_success = true
+primary = "format.scanf_missing_address"
+findings = 1
+absent = ["warn.uninitialized"]
+[vars]
+arg = "b"
+arg_number = "3"

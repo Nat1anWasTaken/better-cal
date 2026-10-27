@@ -1,0 +1,5 @@
+compile_success = true
+primary = "format.printf_type_mismatch"
+[vars]
+arg = "total"
+suggest_spec = "%d"

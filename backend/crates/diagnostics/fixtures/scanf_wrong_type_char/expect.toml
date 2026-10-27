@@ -1,0 +1,6 @@
+# Counter-example: `&c` is present; the problem is the format, not a missing `&`.
+compile_success = true
+primary = "format.scanf_type_mismatch"
+absent = ["format.scanf_missing_address"]
+[vars]
+suggest_spec = "%c"

@@ -1,0 +1,5 @@
+compile_success = true
+primary = "format.scanf_type_mismatch"
+absent = ["format.scanf_missing_address"]
+[vars]
+suggest_spec = "%lf"

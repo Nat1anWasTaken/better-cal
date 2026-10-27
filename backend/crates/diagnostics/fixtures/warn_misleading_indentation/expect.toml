@@ -1,0 +1,6 @@
+compile_success = true
+primary = "warn.misleading_indentation"
+findings = 1
+[vars]
+keyword = "if"
+next_line = "8"

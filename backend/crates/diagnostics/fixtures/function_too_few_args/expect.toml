@@ -1,0 +1,6 @@
+compile_success = false
+primary = "func.too_few_args"
+primary_line = 8
+[vars]
+func = "add"
+decl_line = "3"

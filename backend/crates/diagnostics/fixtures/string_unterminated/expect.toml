@@ -1,0 +1,4 @@
+compile_success = false
+primary = "syntax.unterminated_string"
+primary_line = 4
+cascade = ["syntax.missing_semicolon", "syntax.expected_expression"]

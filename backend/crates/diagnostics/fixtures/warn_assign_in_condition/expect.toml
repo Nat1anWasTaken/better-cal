@@ -1,0 +1,3 @@
+compile_success = true
+primary = "warn.assign_in_condition"
+primary_line = 6

@@ -1,0 +1,6 @@
+compile_success = false
+primary = "syntax.extra_brace"
+findings = 1
+absent = ["syntax.unexpected_token", "fallback.compile_error"]
+[vars]
+close_line = "5"

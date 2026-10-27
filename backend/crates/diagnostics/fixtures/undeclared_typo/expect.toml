@@ -1,0 +1,6 @@
+compile_success = false
+primary = "ident.undeclared"
+findings = 1
+[vars]
+ident = "conut"
+suggestion = "count"

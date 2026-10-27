@@ -1,0 +1,5 @@
+compile_success = false
+primary = "syntax.unclosed_brace"
+findings = 1
+[vars]
+open_line = "5"

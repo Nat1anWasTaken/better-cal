@@ -1,0 +1,6 @@
+compile_success = false
+primary = "ident.undeclared"
+primary_line = 6
+findings = 1
+[vars]
+ident = "sum"

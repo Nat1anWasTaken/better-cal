@@ -1,0 +1,10 @@
+# GCC reports `invalid suffix "；" on integer constant`; the real cause is a
+# full-width semicolon, which we detect in the source itself.
+compile_success = false
+primary = "syntax.fullwidth_char"
+primary_line = 4
+findings = 1
+absent = ["syntax.missing_semicolon", "fallback.compile_error", "warn.unused_variable"]
+[vars]
+char = "；"
+ascii = ";"

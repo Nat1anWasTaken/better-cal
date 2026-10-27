@@ -1,0 +1,97 @@
+# 函式：宣告、呼叫、參數、回傳值、include。
+
+[rules."func.missing_include"]
+title = "使用 `{func}` 前需要 `#include <{header}>`"
+what = "第 {line} 行用到了 `{func}`，但程式最上面沒有引入它所在的標頭檔 `<{header}>`。"
+cause = "編譯器建議加上 `#include <{header}>`。"
+where = "程式的最上面（`#include` 那幾行），以及第 {line} 行。"
+why = "像 `{func}` 這樣的函式是 C 語言內建工具箱裡的工具。`#include <{header}>` 就是告訴編譯器「我要用這個工具箱」，這樣它才知道 `{func}` 該怎麼使用。"
+next_steps = ["在程式最上面加上一行 `#include <{header}>`。"]
+hints = ["`printf`、`scanf` 在 `<stdio.h>`；`sqrt`、`pow` 在 `<math.h>`；`strlen` 在 `<string.h>`。"]
+variants = [
+  { when_concepts = ["functions"], why = "編譯器需要先看到函式的宣告，才能檢查你呼叫時給的參數對不對。`<{header}>` 裡面就有 `{func}` 的宣告。" },
+]
+
+[rules."func.misspelled"]
+title = "找不到名為 `{func}` 的函式"
+what = "第 {line} 行呼叫了 `{func}`，但不管是 C 的內建函式還是你的程式裡，都沒有這個名稱的函式。"
+cause = "可能是拼字或大小寫打錯了，很像的名稱是 `{suggestion}`。"
+where = "第 {line} 行的 `{func}`。"
+why = "C 語言會區分大小寫，而且名稱必須完全一樣。`{func}` 和 `{suggestion}` 對電腦來說是兩個不同的名字。"
+next_steps = ["比對 `{func}` 和 `{suggestion}` 每一個字母，包括大小寫。"]
+hints = ["C 的內建函式名稱都是小寫，例如 `printf`、`scanf`。"]
+
+[rules."func.undefined"]
+title = "找不到函式 `{func}`"
+what = "第 {line} 行呼叫了 `{func}`，但編譯器找不到這個函式的宣告，最後也找不到它的內容。"
+cause = "可能是名稱打錯、忘記 `#include`，或是還沒寫出這個函式。"
+where = "第 {line} 行。"
+why = "呼叫函式之前，編譯器必須知道這個函式存在。內建函式要先 `#include` 對應的標頭檔；自己寫的函式要先寫出它的內容。"
+next_steps = ["確認 `{func}` 的拼法。", "如果這是題目要你自己寫的函式，確認你有寫出它，而且名稱一模一樣。"]
+hints = ["展開原始訊息，`undefined reference` 的意思是「找不到它的內容」。"]
+
+[rules."func.used_before_definition"]
+title = "函式 `{func}` 在定義之前就被呼叫了"
+what = "第 {line} 行呼叫了 `{func}`，但這個函式的內容寫在後面的第 {def_line} 行。"
+cause = "編譯器是由上往下讀的。讀到第 {line} 行時，它還不知道 `{func}` 長什麼樣子，所以猜錯了它的型別，後面才出現衝突。"
+where = "第 {line} 行（呼叫的地方）和第 {def_line} 行（定義的地方）。"
+why = "在 C 語言裡，函式要在被呼叫之前先讓編譯器「認識」。"
+next_steps = [
+  "把第 {def_line} 行開始的整個 `{func}` 函式，搬到呼叫它的函式（例如 `main`）的上面。",
+]
+hints = ["範例（跟你的程式無關）：\n```c\ndouble half(int x) {   // 先寫函式\n    return x / 2.0;\n}\n\nint main(void) {       // 再使用它\n    printf(\"%f\\n\", half(3));\n    return 0;\n}\n```"]
+variants = [
+  { when_concepts = ["functions"], next_steps = ["把整個 `{func}` 函式搬到呼叫它的位置上面。", "或是在呼叫之前加上函式原型（prototype），例如在 `main` 上面寫出 `{func}` 的第一行並以 `;` 結尾。"] },
+]
+
+[rules."func.too_few_args"]
+title = "呼叫 `{func}` 時給的參數太少"
+what = "第 {line} 行呼叫 `{func}` 時，給的值比這個函式需要的少。"
+where = "第 {line} 行的呼叫{?decl_line}，以及第 {decl_line} 行 `{func}` 的定義{/decl_line}。"
+why = "函式定義時括號裡寫了幾個參數，呼叫時就要依序給幾個值。"
+next_steps = ["{?decl_line}看第 {decl_line} 行，數一數 `{func}` 的括號裡有幾個參數。{/decl_line}然後數一數第 {line} 行呼叫時給了幾個。"]
+hints = ["參數之間用逗號 `,` 分開。例如 `add(int a, int b)` 需要兩個值：`add(1, 2)`。"]
+
+[rules."func.too_many_args"]
+title = "呼叫 `{func}` 時給的參數太多"
+what = "第 {line} 行呼叫 `{func}` 時，給的值比這個函式需要的多。"
+where = "第 {line} 行的呼叫{?decl_line}，以及第 {decl_line} 行 `{func}` 的定義{/decl_line}。"
+why = "函式定義時括號裡寫了幾個參數，呼叫時就要給幾個值，不能多也不能少。"
+next_steps = ["{?decl_line}看第 {decl_line} 行，數一數 `{func}` 需要幾個參數。{/decl_line}然後對照第 {line} 行，看看多出來的是哪一個。"]
+hints = ["如果需要更多輸入，要修改的是函式的定義，而不只是呼叫的地方。"]
+
+[rules."func.conflicting_types"]
+title = "函式 `{func}` 的兩個版本不一致"
+what = "第 {line} 行的 `{func}` 和{?previous_line}第 {previous_line} 行{/previous_line}{!previous_line}前面{/previous_line}出現的版本，型別或參數不一樣。"
+where = "第 {line} 行{?previous_line}和第 {previous_line} 行{/previous_line}。"
+why = "同一個函式在程式中只能有一種樣子：回傳型別、參數的型別和數量都要一致。"
+next_steps = ["比對兩個地方的回傳型別（最前面的 `int`、`double`…）和括號裡的參數。"]
+hints = ["如果函式在使用之後才定義，編譯器會先猜一個型別，之後就可能出現這種衝突。"]
+
+[rules."func.missing_return"]
+title = "函式 `{func}` 可能沒有回傳值"
+what = "函式 `{func}` 宣告會回傳一個值，但程式有可能走到函式結尾卻沒有遇到 `return`。"
+cause = "可能是某些情況（例如 if 的條件不成立時）沒有寫 `return`。"
+where = "函式 `{func}` 的結尾（第 {line} 行附近），以及裡面的每一個 if/else 分支。"
+why = "函式名稱前面寫了型別（例如 `int`），代表它保證會交回一個這種型別的值。如果沒有 `return`，交回的值是不確定的，程式答案可能隨機出錯。"
+next_steps = ["想一想：當每一個 if 的條件都不成立時，函式會做什麼？那時候有 return 嗎？"]
+hints = [
+  "如果函式裡有 `if (...) {{ return ...; }}`，條件不成立時也要有一個 `return`。",
+  "範例（跟你的程式無關）：\n```c\nint sign(int x) {\n    if (x > 0) {\n        return 1;\n    }\n    return 0;   // 其他情況\n}\n```",
+]
+
+[rules."func.void_return_value"]
+title = "`void` 函式不能回傳值"
+what = "第 {line} 行在函式 `{func}` 裡寫了 `return` 加上一個值，但這個函式宣告為 `void`（不回傳任何東西）。"
+where = "第 {line} 行，以及函式 `{func}` 的第一行。"
+why = "`void` 的意思是「沒有」。這種函式做完事就結束，不能交回值。"
+next_steps = ["如果函式需要交回結果，把函式名稱前面的 `void` 改成結果的型別。", "如果不需要交回結果，把 `return` 後面的值拿掉，或整行刪掉。"]
+hints = ["想想看：呼叫這個函式的地方，有沒有用到它的結果？"]
+
+[rules."func.return_without_value"]
+title = "這裡的 `return` 少了要回傳的值"
+what = "第 {line} 行只寫了 `return;`，但函式 `{func}` 宣告會回傳一個值。"
+where = "第 {line} 行。"
+why = "函式名稱前面寫的型別，代表它一定要交回一個這種型別的值。"
+next_steps = ["在 `return` 後面寫上要交回的值。"]
+hints = ["例如 `return 0;` 或 `return total;`。"]

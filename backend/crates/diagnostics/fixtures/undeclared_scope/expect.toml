@@ -1,0 +1,10 @@
+# The "unused variable 'last'" warning is evidence for the scope problem and
+# is folded into the same card.
+compile_success = false
+primary = "ident.undeclared"
+primary_line = 7
+findings = 1
+absent = ["warn.unused_variable"]
+[vars]
+ident = "last"
+declared_line = "5"

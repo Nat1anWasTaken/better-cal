@@ -1,0 +1,1 @@
+[{"kind": "error", "column-origin": 1, "children": [], "escape-source": false, "locations": [{"caret": {"byte-column": 16, "display-column": 15, "line": 3, "file": "main.c", "column": 15}}], "message": "expected '=', ',', ';', 'asm' or '__attribute__' before ')' token"}]

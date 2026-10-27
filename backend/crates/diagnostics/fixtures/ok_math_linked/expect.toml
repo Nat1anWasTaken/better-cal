@@ -1,0 +1,3 @@
+# Counter-example: a correct program must produce no findings at all.
+compile_success = true
+findings = 0

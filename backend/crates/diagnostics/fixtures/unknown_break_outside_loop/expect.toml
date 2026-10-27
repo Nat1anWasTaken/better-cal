@@ -1,0 +1,4 @@
+# No dedicated rule: an honest generic card, not an unrelated template.
+compile_success = false
+primary = "fallback.compile_error"
+findings = 1

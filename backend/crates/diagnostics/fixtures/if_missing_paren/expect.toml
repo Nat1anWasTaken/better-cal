@@ -1,0 +1,6 @@
+compile_success = false
+primary = "syntax.missing_open_paren"
+primary_line = 5
+cascade = ["warn.no_effect", "warn.unused_variable"]
+[vars]
+keyword = "if"

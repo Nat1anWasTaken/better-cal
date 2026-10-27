@@ -1,0 +1,8 @@
+# GCC suggests "did you mean 'stdin'?", which must never reach students.
+compile_success = false
+primary = "ident.unknown_type"
+absent = ["ident.undeclared", "func.misspelled"]
+cascade = ["format.printf_type_mismatch"]
+[vars]
+type_name = "string"
+is_string = "1"

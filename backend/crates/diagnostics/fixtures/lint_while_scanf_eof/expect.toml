@@ -1,0 +1,2 @@
+compile_success = true
+primary = "lint.while_scanf_no_compare"

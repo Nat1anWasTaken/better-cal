@@ -1,0 +1,5 @@
+compile_success = true
+primary = "format.missing_argument"
+[vars]
+spec = "%d"
+call = "printf"

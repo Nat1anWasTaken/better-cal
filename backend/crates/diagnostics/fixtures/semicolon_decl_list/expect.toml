@@ -1,0 +1,10 @@
+# GCC: "expected '=', ',', ';', 'asm' or '__attribute__' before 'scanf'".
+# The undeclared-identifier errors that follow are knock-on effects.
+compile_success = false
+primary = "syntax.missing_semicolon"
+primary_line = 5
+cascade = ["ident.undeclared"]
+absent = ["syntax.unexpected_token"]
+[vars]
+prev_line = "4"
+token = "scanf"

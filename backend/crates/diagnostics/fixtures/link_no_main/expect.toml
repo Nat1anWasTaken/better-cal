@@ -1,0 +1,5 @@
+compile_success = false
+primary = "link.undefined_main"
+findings = 1
+[vars]
+suggestion = "mian"

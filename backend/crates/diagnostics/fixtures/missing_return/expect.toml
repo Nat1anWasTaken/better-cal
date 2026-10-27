@@ -1,0 +1,4 @@
+compile_success = true
+primary = "func.missing_return"
+[vars]
+func = "max"

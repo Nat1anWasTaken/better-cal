@@ -1,0 +1,7 @@
+# GCC's misleading-indentation warning is folded into the loop lint.
+compile_success = true
+primary = "lint.loop_empty_body"
+findings = 1
+absent = ["warn.misleading_indentation"]
+[vars]
+keyword = "for"

@@ -1,0 +1,27 @@
+# 連結（linking）錯誤。
+
+[rules."link.undefined_main"]
+title = "找不到 `main` 函式"
+what = "程式裡沒有名為 `main` 的函式，所以電腦不知道程式要從哪裡開始執行。"
+cause = "{?suggestion}你寫了一個 `{suggestion}`，很可能是想寫 `main`。{/suggestion}{!suggestion}可能是 `main` 拼錯了、大小寫不對，或是不小心刪掉了。{/suggestion}"
+where = "{?suggestion}第 {line} 行的 `{suggestion}`。{/suggestion}{!suggestion}這個錯誤沒有行號。找找看程式裡哪一個函式應該是 `main`。{/suggestion}"
+why = "每個 C 程式都必須有一個叫 `main` 的函式（全部小寫）。程式一開始執行，就是從 `main` 的第一行開始。"
+next_steps = ["確認程式裡有 `int main(void)`，而且 `main` 是全部小寫、拼字正確。"]
+hints = ["範例（跟你的程式無關）：\n```c\nint main(void) {\n    return 0;\n}\n```"]
+
+[rules."link.undefined_function"]
+title = "找不到函式 `{func}` 的內容"
+what = "程式呼叫了 `{func}`，但在最後組合程式時找不到這個函式的內容。"
+cause = "{?suggestion}你的程式裡有一個名稱很像的函式 `{suggestion}`，可能是定義或呼叫時拼錯了其中一個。{/suggestion}{!suggestion}可能是只寫了函式的宣告，卻沒有寫它的內容；或是名稱拼錯。{/suggestion}"
+where = "{?call_line}呼叫的地方在第 {call_line} 行。{/call_line}連結錯誤沒有精確的行號。"
+why = "呼叫函式時，最後一定要找得到它的完整內容（用 {{ }} 包住的那一段）。只有宣告是不夠的。"
+next_steps = ["在程式裡搜尋 `{func}`，確認有一個地方寫出它的完整內容。", "{?suggestion}比對 `{func}` 和 `{suggestion}` 的拼法。{/suggestion}"]
+hints = ["函式的「宣告」以 `;` 結尾；「定義」後面接著 {{ }} 和內容。兩者的名稱必須一模一樣。"]
+
+[rules."link.multiple_definition"]
+title = "`{symbol}` 被定義了不只一次"
+what = "在組合程式時，發現 `{symbol}` 有兩個以上的定義。"
+where = "這類錯誤沒有行號。在程式裡搜尋 `{symbol}`。"
+why = "同一個函式或全域變數在整個程式裡只能定義一次。"
+next_steps = ["找出所有定義 `{symbol}` 的地方，只保留一個。"]
+hints = ["如果需要兩個不同的東西，替其中一個改個名字。"]

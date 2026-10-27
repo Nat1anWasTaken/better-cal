@@ -1,0 +1,4 @@
+# GCC is silent; our lint reports an informational note (never "fix first").
+compile_success = true
+rules = ["lint.scanf_trailing_whitespace"]
+findings = 1

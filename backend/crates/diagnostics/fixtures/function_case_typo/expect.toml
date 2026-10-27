@@ -1,0 +1,8 @@
+# Implicit-declaration warning + linker "undefined reference" become one card.
+compile_success = false
+primary = "func.misspelled"
+findings = 1
+absent = ["link.undefined_function", "fallback.link_error"]
+[vars]
+func = "Printf"
+suggestion = "printf"

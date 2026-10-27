@@ -1,0 +1,4 @@
+[]
+/usr/bin/ld: /tmp/ccXXXXXX.o: in function `main':
+main.c:(.text.startup+0xf): undefined reference to `add'
+collect2: error: ld returned 1 exit status

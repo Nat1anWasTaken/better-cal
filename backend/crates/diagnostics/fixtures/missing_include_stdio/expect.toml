@@ -1,0 +1,7 @@
+compile_success = true
+primary = "func.missing_include"
+findings = 1
+absent = ["fallback.warning"]
+[vars]
+func = "printf"
+header = "stdio.h"

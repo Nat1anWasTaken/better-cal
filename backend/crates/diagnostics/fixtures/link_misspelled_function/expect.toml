@@ -1,0 +1,7 @@
+compile_success = false
+primary = "link.undefined_function"
+findings = 1
+[vars]
+func = "add"
+suggestion = "ad"
+call_line = "6"

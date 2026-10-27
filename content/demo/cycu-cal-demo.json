@@ -1,0 +1,149 @@
+{
+  "format_version": "cycu-cal.import/v1",
+  "problems": [
+    {
+      "slug": "hello-cycu",
+      "content": {
+        "title": "第一個程式：打招呼",
+        "statement_md": "> CYCU-CAL 自建教材\n\n請寫一個程式，在螢幕上輸出下面這一行文字（注意大小寫、標點和最後的換行）：\n\n```\nHello, CYCU-CAL!\n```\n\n這一題沒有輸入。\n\n**提示**：`printf` 可以把雙引號裡的文字印出來，`\\n` 代表換行。",
+        "examples": [{ "input": "", "output": "Hello, CYCU-CAL!\n" }],
+        "mode": "full",
+        "starter_code": "#include <stdio.h>\n\nint main(void) {\n    // 在這裡寫你的程式\n\n    return 0;\n}\n",
+        "concepts": ["io"],
+        "reference_solution": "#include <stdio.h>\n\nint main(void) {\n    printf(\"Hello, CYCU-CAL!\\n\");\n    return 0;\n}\n",
+        "tests": [
+          { "name": "範例", "visibility": "public", "input": "", "expected_output": "Hello, CYCU-CAL!\n" },
+          { "visibility": "hidden", "input": "", "expected_output": "Hello, CYCU-CAL!\n" }
+        ]
+      }
+    },
+    {
+      "slug": "a-plus-b",
+      "content": {
+        "title": "A + B",
+        "statement_md": "> CYCU-CAL 自建教材\n\n輸入兩個整數 A 和 B（以空白分隔），請輸出它們的和。\n\n- 輸入：一行，兩個整數 A、B（-1000 ≤ A, B ≤ 1000）\n- 輸出：一行，A + B 的值\n\n這一題會練習用 `scanf` 讀取輸入、用 `printf` 輸出結果。",
+        "examples": [
+          { "input": "3 5\n", "output": "8\n" },
+          { "input": "-2 2\n", "output": "0\n", "explanation_md": "負數也要能正確相加。" }
+        ],
+        "mode": "full",
+        "starter_code": "#include <stdio.h>\n\nint main(void) {\n    int a, b;\n    // 讀入 a 和 b，再輸出 a + b\n\n    return 0;\n}\n",
+        "concepts": ["io", "variables"],
+        "reference_solution": "#include <stdio.h>\n\nint main(void) {\n    int a, b;\n    scanf(\"%d %d\", &a, &b);\n    printf(\"%d\\n\", a + b);\n    return 0;\n}\n",
+        "tests": [
+          { "name": "範例 1", "visibility": "public", "input": "3 5\n", "expected_output": "8\n" },
+          { "name": "範例 2", "visibility": "public", "input": "-2 2\n", "expected_output": "0\n" },
+          { "visibility": "hidden", "input": "1000 1000\n", "expected_output": "2000\n" },
+          { "visibility": "hidden", "input": "-1000 -999\n", "expected_output": "-1999\n" },
+          { "visibility": "hidden", "input": "0 0\n", "expected_output": "0\n" }
+        ]
+      }
+    },
+    {
+      "slug": "average-of-three",
+      "content": {
+        "title": "三個數的平均",
+        "statement_md": "> CYCU-CAL 自建教材\n\n輸入三個整數，輸出它們的平均，**四捨五入到小數點後兩位**。\n\n- 輸入：一行，三個整數（0 ≤ 每個數 ≤ 100）\n- 輸出：平均值，小數點後兩位\n\n想一想：兩個整數相除，結果一定是整數嗎？",
+        "examples": [{ "input": "1 2 2\n", "output": "1.67\n" }],
+        "mode": "full",
+        "starter_code": "#include <stdio.h>\n\nint main(void) {\n    int a, b, c;\n    scanf(\"%d %d %d\", &a, &b, &c);\n    // 計算平均並輸出\n\n    return 0;\n}\n",
+        "concepts": ["io", "variables"],
+        "reference_solution": "#include <stdio.h>\n\nint main(void) {\n    int a, b, c;\n    scanf(\"%d %d %d\", &a, &b, &c);\n    printf(\"%.2f\\n\", (a + b + c) / 3.0);\n    return 0;\n}\n",
+        "tests": [
+          { "name": "範例", "visibility": "public", "input": "1 2 2\n", "expected_output": "1.67\n" },
+          { "name": "剛好整除", "visibility": "public", "input": "3 3 3\n", "expected_output": "3.00\n" },
+          { "visibility": "hidden", "input": "100 99 100\n", "expected_output": "99.67\n" },
+          { "visibility": "hidden", "input": "0 0 1\n", "expected_output": "0.33\n" }
+        ]
+      }
+    },
+    {
+      "slug": "star-triangle",
+      "content": {
+        "title": "星號三角形（格式完全相同）",
+        "statement_md": "> CYCU-CAL 自建教材\n\n輸入一個整數 n（1 ≤ n ≤ 10），輸出 n 行星號三角形：第 i 行有 i 個 `*`，中間**沒有空白**。\n\n這一題使用「完全相同」比對：每個空白、每個換行都必須和預期一樣。如果答案錯了，請利用比較區裡的 `·`（空白）和 `↵`（換行）符號找出差異。",
+        "examples": [{ "input": "3\n", "output": "*\n**\n***\n" }],
+        "mode": "full",
+        "starter_code": "#include <stdio.h>\n\nint main(void) {\n    int n;\n    scanf(\"%d\", &n);\n    // 用迴圈印出三角形\n\n    return 0;\n}\n",
+        "concepts": ["io", "variables", "loops"],
+        "compare_mode": "exact",
+        "reference_solution": "#include <stdio.h>\n\nint main(void) {\n    int n;\n    scanf(\"%d\", &n);\n    for (int i = 1; i <= n; i++) {\n        for (int j = 0; j < i; j++) {\n            printf(\"*\");\n        }\n        printf(\"\\n\");\n    }\n    return 0;\n}\n",
+        "tests": [
+          { "name": "範例", "visibility": "public", "input": "3\n", "expected_output": "*\n**\n***\n" },
+          { "visibility": "hidden", "input": "1\n", "expected_output": "*\n" },
+          { "visibility": "hidden", "input": "5\n", "expected_output": "*\n**\n***\n****\n*****\n" }
+        ]
+      }
+    },
+    {
+      "slug": "sum-1-to-n",
+      "content": {
+        "title": "1 加到 n",
+        "statement_md": "> CYCU-CAL 自建教材\n\n輸入一個正整數 n（1 ≤ n ≤ 100000），輸出 1 + 2 + … + n 的結果。\n\n請用迴圈完成。注意：結果可能超過 `int` 能存的範圍嗎？",
+        "examples": [{ "input": "10\n", "output": "55\n" }],
+        "mode": "full",
+        "starter_code": "#include <stdio.h>\n\nint main(void) {\n    int n;\n    scanf(\"%d\", &n);\n\n    return 0;\n}\n",
+        "concepts": ["io", "variables", "loops"],
+        "reference_solution": "#include <stdio.h>\n\nint main(void) {\n    int n;\n    scanf(\"%d\", &n);\n    long long sum = 0;\n    for (int i = 1; i <= n; i++) {\n        sum += i;\n    }\n    printf(\"%lld\\n\", sum);\n    return 0;\n}\n",
+        "tests": [
+          { "name": "範例", "visibility": "public", "input": "10\n", "expected_output": "55\n" },
+          { "name": "最小", "visibility": "public", "input": "1\n", "expected_output": "1\n" },
+          { "visibility": "hidden", "input": "100\n", "expected_output": "5050\n" },
+          { "visibility": "hidden", "input": "100000\n", "expected_output": "5000050000\n" }
+        ]
+      }
+    },
+    {
+      "slug": "fill-max-function",
+      "content": {
+        "title": "補寫函式：兩數取大",
+        "statement_md": "> CYCU-CAL 自建教材\n\n這是一題**局部補寫**題：灰色的程式碼是題目提供的，你只需要完成 `max` 函式的內容。\n\n`max(a, b)` 要回傳 a 和 b 之中比較大的那一個。`main` 會讀入兩個整數並印出 `max` 的結果。",
+        "examples": [{ "input": "3 9\n", "output": "9\n" }],
+        "mode": "fill_in",
+        "template": "#include <stdio.h>\n\nint max(int a, int b) {\n/*@blank body@*/    // 在這裡完成函式，記得用 return 回傳結果\n    return 0;\n/*@end@*/}\n\nint main(void) {\n    int a, b;\n    scanf(\"%d %d\", &a, &b);\n    printf(\"%d\\n\", max(a, b));\n    return 0;\n}\n",
+        "concepts": ["io", "variables", "conditionals", "functions"],
+        "reference_blanks": { "body": "    if (a > b) {\n        return a;\n    }\n    return b;\n" },
+        "tests": [
+          { "name": "範例", "visibility": "public", "input": "3 9\n", "expected_output": "9\n" },
+          { "name": "第一個比較大", "visibility": "public", "input": "7 2\n", "expected_output": "7\n" },
+          { "visibility": "hidden", "input": "5 5\n", "expected_output": "5\n" },
+          { "visibility": "hidden", "input": "-3 -8\n", "expected_output": "-3\n" }
+        ]
+      }
+    },
+    {
+      "slug": "reverse-array",
+      "content": {
+        "title": "反轉陣列",
+        "statement_md": "> CYCU-CAL 自建教材\n\n第一行輸入 n（1 ≤ n ≤ 100），第二行輸入 n 個整數。請把這 n 個整數**倒過來**輸出，數字之間用一個空白分隔，最後換行。",
+        "examples": [{ "input": "5\n1 2 3 4 5\n", "output": "5 4 3 2 1\n" }],
+        "mode": "full",
+        "starter_code": "#include <stdio.h>\n\nint main(void) {\n    int n;\n    int a[100];\n    scanf(\"%d\", &n);\n\n    return 0;\n}\n",
+        "concepts": ["io", "variables", "loops", "arrays"],
+        "reference_solution": "#include <stdio.h>\n\nint main(void) {\n    int n;\n    int a[100];\n    scanf(\"%d\", &n);\n    for (int i = 0; i < n; i++) {\n        scanf(\"%d\", &a[i]);\n    }\n    for (int i = n - 1; i >= 0; i--) {\n        printf(\"%d\", a[i]);\n        if (i > 0) {\n            printf(\" \");\n        }\n    }\n    printf(\"\\n\");\n    return 0;\n}\n",
+        "tests": [
+          { "name": "範例", "visibility": "public", "input": "5\n1 2 3 4 5\n", "expected_output": "5 4 3 2 1\n" },
+          { "name": "只有一個", "visibility": "public", "input": "1\n42\n", "expected_output": "42\n" },
+          { "visibility": "hidden", "input": "3\n-1 0 1\n", "expected_output": "1 0 -1\n" },
+          { "visibility": "hidden", "input": "6\n10 20 30 40 50 60\n", "expected_output": "60 50 40 30 20 10\n" }
+        ]
+      }
+    }
+  ],
+  "problem_sets": [
+    {
+      "slug": "week-1-io",
+      "title": "第 1 週：輸入與輸出",
+      "description_md": "CYCU-CAL 自建教材。認識 `printf`、`scanf`、變數與整數運算。",
+      "learned_concepts": ["io", "variables"],
+      "problems": ["hello-cycu", "a-plus-b", "average-of-three", "star-triangle"]
+    },
+    {
+      "slug": "week-2-loops-functions",
+      "title": "第 2 週：迴圈、函式與陣列",
+      "description_md": "CYCU-CAL 自建教材。延續第 1 週（A + B 重複使用），加入迴圈、自訂函式與陣列。",
+      "learned_concepts": ["io", "variables", "conditionals", "loops"],
+      "problems": ["a-plus-b", "sum-1-to-n", "fill-max-function", "reverse-array"]
+    }
+  ]
+}

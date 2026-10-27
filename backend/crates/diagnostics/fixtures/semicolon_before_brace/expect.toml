@@ -1,0 +1,6 @@
+compile_success = false
+primary = "syntax.missing_semicolon"
+primary_line = 5
+findings = 1
+[vars]
+token = "}"

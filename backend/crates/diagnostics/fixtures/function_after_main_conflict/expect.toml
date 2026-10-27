@@ -1,0 +1,9 @@
+# The implicit declaration, the "conflicting types" error and the knock-on
+# printf format warning are all explained by one card.
+compile_success = false
+primary = "func.used_before_definition"
+findings = 1
+absent = ["func.conflicting_types", "format.printf_type_mismatch"]
+[vars]
+func = "average"
+def_line = "8"

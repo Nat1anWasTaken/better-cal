@@ -1,0 +1,4 @@
+compile_success = true
+primary = "warn.uninitialized"
+[vars]
+ident = "sum"

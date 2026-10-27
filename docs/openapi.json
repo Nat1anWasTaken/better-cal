@@ -1,0 +1,7695 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CYCU-CAL Judge API",
+    "description": "C 語言教學與自動評測平台 API。\n\n- 學生使用瀏覽器 session（HttpOnly cookie）；所有非 GET 請求需帶 `X-CSRF-Token`（由 `GET /api/v1/auth/me` 取得）。\n- Agent / 腳本使用擁有者建立的 API token：`Authorization: Bearer ccal_…`，權限依 scope 限制。\n- 錯誤一律為 RFC 9457 `application/problem+json`，欄位問題在 `errors[].pointer`（JSON Pointer）。\n- 建立類請求可帶 `Idempotency-Key` 以安全重試。\n- 詳細流程見 docs/api-guide.md。",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    },
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/admin/audit": {
+      "get": {
+        "tags": [
+          "admin: system"
+        ],
+        "summary": "Who changed what (newest first).",
+        "operationId": "audit_log",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1–100, default 20.",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor from `next_cursor`.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AuditEntry"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "settings:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/catalog": {
+      "get": {
+        "tags": [
+          "admin: teaching text"
+        ],
+        "summary": "All rules with their state, unpublished drafts and recent usage.",
+        "operationId": "overview",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogOverview"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "content:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/catalog/custom-rules/{id}": {
+      "get": {
+        "tags": [
+          "admin: teaching text"
+        ],
+        "summary": "One custom rule: published value and unpublished draft.",
+        "operationId": "get_custom_rule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomRuleEditor"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "content:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "admin: teaching text"
+        ],
+        "summary": "Create or update a custom rule (draft). Its regex is checked against real\ncompiler output from the examples; custom rules are always shown as guesses.",
+        "operationId": "put_custom_rule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Must start with `custom.`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomRuleInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomRuleResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "content:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "admin: teaching text"
+        ],
+        "summary": "Stage removal of a custom rule (applied on publish).",
+        "operationId": "delete_custom_rule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {}
+        },
+        "security": [
+          {
+            "token": [
+              "content:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/catalog/drafts/{key}": {
+      "delete": {
+        "tags": [
+          "admin: teaching text"
+        ],
+        "summary": "Discard an unpublished draft (rule or custom rule; use id `texts` for shared texts).",
+        "operationId": "discard_draft",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "description": "`rule:<id>`, `custom:<id>` or `texts`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {}
+        },
+        "security": [
+          {
+            "token": [
+              "content:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/catalog/history": {
+      "get": {
+        "tags": [
+          "admin: teaching text"
+        ],
+        "summary": "Publish history (newest first). To roll back, PUT an older value as a draft and publish.",
+        "operationId": "history",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HistoryEntry"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "content:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/catalog/preview": {
+      "post": {
+        "tags": [
+          "admin: teaching text"
+        ],
+        "summary": "See exactly what students would see, with drafts applied.",
+        "operationId": "preview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewResult"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "content:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/catalog/publish": {
+      "post": {
+        "tags": [
+          "admin: teaching text"
+        ],
+        "summary": "Publish every pending draft at once. Takes effect immediately for all\nstudents, including when they re-open earlier submissions.",
+        "operationId": "publish",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "content:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/catalog/rules/{id}": {
+      "get": {
+        "tags": [
+          "admin: teaching text"
+        ],
+        "summary": "One rule's built-in, published and draft wording.",
+        "operationId": "get_rule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Rule id, e.g. syntax.missing_semicolon",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleEditor"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "content:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "admin: teaching text"
+        ],
+        "summary": "Save a draft of a rule's wording. Templates are validated against the\nvariables the rule provides. Students see it only after publishing.",
+        "operationId": "put_rule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "A RuleEntry (same shape as `published`)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleEditor"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "content:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/catalog/rules/{id}/reset": {
+      "post": {
+        "tags": [
+          "admin: teaching text"
+        ],
+        "summary": "Stage a revert to the built-in wording (applied on publish).",
+        "operationId": "reset_rule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleEditor"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "content:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/catalog/texts": {
+      "get": {
+        "tags": [
+          "admin: teaching text"
+        ],
+        "summary": "Shared texts: confidence labels, notes, comparison-rule descriptions.",
+        "operationId": "get_texts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextsEditor"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "content:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "admin: teaching text"
+        ],
+        "summary": "Save a draft of the shared texts (full map).",
+        "operationId": "put_texts",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "propertyNames": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextsEditor"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "content:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/cohorts": {
+      "get": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "Cohorts (groups of students sharing settings).",
+        "operationId": "list_cohorts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Cohort"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "students:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "Create a cohort.",
+        "operationId": "create_cohort",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CohortInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cohort"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "students:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/cohorts/{id}": {
+      "put": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "Update a cohort's name, description and settings (applies immediately).",
+        "operationId": "update_cohort",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CohortInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cohort"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "students:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "Delete a cohort (members keep their accounts, without a cohort).",
+        "operationId": "delete_cohort",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {}
+        },
+        "security": [
+          {
+            "token": [
+              "students:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/export": {
+      "get": {
+        "tags": [
+          "admin: import/export"
+        ],
+        "summary": "Export problems and sets as an import document (round-trips through `/admin/import`).",
+        "operationId": "export",
+        "parameters": [
+          {
+            "name": "problem_set",
+            "in": "query",
+            "description": "Export one set (id or slug) and its problems; default: everything.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "published",
+            "in": "query",
+            "description": "Use the published revision instead of the head revision.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "problems:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/import": {
+      "post": {
+        "tags": [
+          "admin: import/export"
+        ],
+        "summary": "Import problems and sets from `cycu-cal.import/v1` JSON.",
+        "description": "- Items are matched by `slug`: identical content is a no-op, changed\n  content creates a new revision, so retries never duplicate anything.\n- All-or-nothing: the whole document is applied in one transaction.\n- Everything imported stays **draft**: publishing and activating are\n  separate, explicit calls.\n- `?dry_run=true` validates and reports actions without writing.",
+        "operationId": "import",
+        "parameters": [
+          {
+            "name": "dry_run",
+            "in": "query",
+            "description": "Validate and report what would happen without writing anything.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportDocument"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "problem+json; `errors` has JSON Pointers, `data` holds the full ImportReport",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "problems:write",
+              "sets:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/overview": {
+      "get": {
+        "tags": [
+          "admin: system"
+        ],
+        "summary": "Dashboard summary.",
+        "operationId": "overview",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Overview"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "problems:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/problem-sets": {
+      "get": {
+        "tags": [
+          "admin: problem sets"
+        ],
+        "summary": "All problem sets, including drafts.",
+        "operationId": "list_sets",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminSet"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "problems:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "admin: problem sets"
+        ],
+        "summary": "Create a problem set (draft). Use `Idempotency-Key` for safe retries.",
+        "operationId": "create_set",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSet"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "sets:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/problem-sets/{set}": {
+      "get": {
+        "tags": [
+          "admin: problem sets"
+        ],
+        "summary": "One set with its ordered problems.",
+        "operationId": "get_set",
+        "parameters": [
+          {
+            "name": "set",
+            "in": "path",
+            "description": "Id or slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSet"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "problems:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "admin: problem sets"
+        ],
+        "summary": "Update title, description, concepts, listing and (optionally) items.\nThe slug cannot change.",
+        "operationId": "update_set",
+        "parameters": [
+          {
+            "name": "set",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSet"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "sets:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "admin: problem sets"
+        ],
+        "summary": "Archive a set (hidden from students). Problems are untouched.",
+        "operationId": "archive_set",
+        "parameters": [
+          {
+            "name": "set",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {},
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "sets:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/problem-sets/{set}/items": {
+      "put": {
+        "tags": [
+          "admin: problem sets"
+        ],
+        "summary": "Replace the ordered list of problems in a set.",
+        "operationId": "put_items",
+        "parameters": [
+          {
+            "name": "set",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemsInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSet"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "sets:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/problem-sets/{set}/publish": {
+      "post": {
+        "tags": [
+          "admin: problem sets"
+        ],
+        "summary": "Publish a set. Every problem in it must already be published.",
+        "operationId": "publish_set",
+        "parameters": [
+          {
+            "name": "set",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSet"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "publish"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/problem-sets/{set}/unpublish": {
+      "post": {
+        "tags": [
+          "admin: problem sets"
+        ],
+        "summary": "Return a set to draft (hidden from students).",
+        "operationId": "unpublish_set",
+        "parameters": [
+          {
+            "name": "set",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSet"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "publish"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/problems": {
+      "get": {
+        "tags": [
+          "admin: problems"
+        ],
+        "summary": "List the problem bank.",
+        "operationId": "list_problems",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search in slug and title.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "`draft`, `published` or `archived`.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ProblemSummary"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "problems:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "admin: problems"
+        ],
+        "summary": "Create a problem (as a draft). Use `Idempotency-Key` for safe retries.",
+        "operationId": "create_problem",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProblem"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "problems:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/problems/{problem}": {
+      "get": {
+        "tags": [
+          "admin: problems"
+        ],
+        "summary": "Full problem including hidden tests and reference solution (head revision).",
+        "operationId": "get_problem",
+        "parameters": [
+          {
+            "name": "problem",
+            "in": "path",
+            "description": "Id or slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "problems:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "admin: problems"
+        ],
+        "summary": "Replace the problem content. Creates a new immutable revision (unless\nnothing changed). Published content is unaffected until you publish again.\nSend `If-Match: <head revision number>` to avoid overwriting someone else's edit.",
+        "operationId": "update_problem",
+        "parameters": [
+          {
+            "name": "problem",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "Expected head revision number",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProblem"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "problems:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "admin: problems"
+        ],
+        "summary": "Archive a problem. Refused while any problem set still includes it.\nRevisions and submissions are kept for traceability.",
+        "operationId": "archive_problem",
+        "parameters": [
+          {
+            "name": "problem",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {},
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "problems:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/problems/{problem}/publish": {
+      "post": {
+        "tags": [
+          "admin: problems"
+        ],
+        "summary": "Validate and publish a revision (default: head). Students get this\nrevision from now on; earlier submissions keep pointing at theirs.",
+        "operationId": "publish_problem",
+        "parameters": [
+          {
+            "name": "problem",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisionSelector"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "publish"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/problems/{problem}/revisions": {
+      "get": {
+        "tags": [
+          "admin: problems"
+        ],
+        "summary": "All revisions (newest first).",
+        "operationId": "list_revisions",
+        "parameters": [
+          {
+            "name": "problem",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RevisionSummary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "problems:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/problems/{problem}/revisions/{number}": {
+      "get": {
+        "tags": [
+          "admin: problems"
+        ],
+        "summary": "One immutable revision (including hidden tests).",
+        "operationId": "get_revision",
+        "parameters": [
+          {
+            "name": "problem",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "problems:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/problems/{problem}/test-run": {
+      "post": {
+        "tags": [
+          "admin: problems"
+        ],
+        "summary": "Run any program against a revision's tests (including hidden ones) and\nsee full details. Useful while authoring.",
+        "operationId": "test_run",
+        "parameters": [
+          {
+            "name": "problem",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionView"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "problems:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/problems/{problem}/unpublish": {
+      "post": {
+        "tags": [
+          "admin: problems"
+        ],
+        "summary": "Hide the problem from students (sets keep the reference).",
+        "operationId": "unpublish_problem",
+        "parameters": [
+          {
+            "name": "problem",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "publish"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/problems/{problem}/validate": {
+      "post": {
+        "tags": [
+          "admin: problems"
+        ],
+        "summary": "Check that a revision is ready to publish (content rules + the reference\nsolution passes every test through the real judge). Changes nothing.",
+        "operationId": "validate_problem",
+        "parameters": [
+          {
+            "name": "problem",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisionSelector"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationReport"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "problems:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/progress": {
+      "get": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "Student × problem progress for one set.",
+        "operationId": "progress_matrix",
+        "parameters": [
+          {
+            "name": "problem_set",
+            "in": "query",
+            "description": "Set id or slug (required).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cohort_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressMatrix"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "students:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/settings": {
+      "get": {
+        "tags": [
+          "admin: system"
+        ],
+        "summary": "Current site settings.",
+        "operationId": "get_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "settings:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "admin: system"
+        ],
+        "summary": "Replace site settings. Applies immediately without a restart.\nThe rule that hidden tests are never shown to students is not configurable.",
+        "operationId": "put_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SiteSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsView"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "settings:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/site/active-problem-set": {
+      "put": {
+        "tags": [
+          "admin: problem sets"
+        ],
+        "summary": "Make a published set the site's active (default) set. Takes effect\nimmediately; open editors are told about the switch and keep their code.",
+        "operationId": "set_active",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActiveSetInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveSet"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "publish"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/stats/rules": {
+      "get": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "Which explanation rules students hit most (to prioritise teaching text).",
+        "operationId": "rule_stats",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "description": "Look-back window in days (default 7).",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "problem_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RuleStat"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "students:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/submissions": {
+      "get": {
+        "tags": [
+          "admin: system"
+        ],
+        "summary": "All submissions (newest first).",
+        "operationId": "list_submissions",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "problem_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "verdict",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AdminSubmission"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "submissions:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/submissions/{id}": {
+      "get": {
+        "tags": [
+          "admin: system"
+        ],
+        "summary": "Any submission with full detail (hidden tests, compiled source, judge errors)\nand the exact problem revision it was judged against.",
+        "operationId": "get_submission",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "submissions:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/tokens": {
+      "get": {
+        "tags": [
+          "admin: system"
+        ],
+        "summary": "API tokens you created (secrets are never shown again).",
+        "operationId": "list_tokens",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TokenInfo"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "admin: system"
+        ],
+        "summary": "Create an API token for an agent or script. Only an owner's browser\nsession can do this (tokens cannot mint tokens).",
+        "operationId": "create_token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateToken"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedToken"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/tokens/{id}": {
+      "delete": {
+        "tags": [
+          "admin: system"
+        ],
+        "summary": "Revoke a token immediately.",
+        "operationId": "revoke_token",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {}
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "List accounts.",
+        "operationId": "list_users",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "cohort_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "description": "`student` or `owner`.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AdminUser"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "students:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "Create one account.",
+        "operationId": "create_user",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUser"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedUser"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "students:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users/batch": {
+      "post": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "Create many students from pasted CSV text. All-or-nothing validation;\ngenerated passwords are returned once.",
+        "operationId": "batch_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "students:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}": {
+      "get": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "One account.",
+        "operationId": "get_user",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUser"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "students:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "Rename, disable/enable, or move a user between cohorts.",
+        "operationId": "update_user",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUser"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUser"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "students:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}/credits/{problem_id}": {
+      "put": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "Manually credit a problem as completed for a student. Judging results are\nnot modified; the credit is stored separately and can be removed.",
+        "operationId": "credit",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "problem_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreditInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {}
+        },
+        "security": [
+          {
+            "token": [
+              "students:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "Remove a manual credit.",
+        "operationId": "uncredit",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "problem_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {}
+        },
+        "security": [
+          {
+            "token": [
+              "students:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}/policy": {
+      "get": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "A student's overrides and resulting effective settings (with sources).",
+        "operationId": "get_policy",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "students:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "Replace a student's overrides (unset fields fall back to cohort/site).",
+        "operationId": "put_policy",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolicyPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyView"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "students:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}/progress": {
+      "get": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "One student's progress per problem, with common error types and hint use.",
+        "operationId": "user_progress",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserProblemProgress"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "token": [
+              "students:read"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}/reset-password": {
+      "post": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "Generate a new password for a user and sign them out everywhere.",
+        "operationId": "reset_password",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewPassword"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}/revoke-sessions": {
+      "post": {
+        "tags": [
+          "admin: students"
+        ],
+        "summary": "Sign a user out of every session.",
+        "operationId": "revoke_sessions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {}
+        },
+        "security": [
+          {
+            "token": [
+              "students:write"
+            ]
+          },
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Log in with username and password; sets an HttpOnly session cookie.",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "End the current session.",
+        "operationId": "logout",
+        "responses": {
+          "204": {}
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Current user, plus the CSRF token for cookie sessions.",
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change your password. All of your other sessions are signed out.",
+        "operationId": "change_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {},
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/concepts": {
+      "get": {
+        "tags": [
+          "student"
+        ],
+        "summary": "Concept ids usable in `concepts` / `learned_concepts` fields.",
+        "operationId": "concepts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Concept"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/drafts/{problem_id}": {
+      "get": {
+        "tags": [
+          "student"
+        ],
+        "summary": "Your autosaved draft for a problem (independent of problem sets).",
+        "operationId": "get_draft",
+        "parameters": [
+          {
+            "name": "problem_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "student"
+        ],
+        "summary": "Save your draft. Returns 409 with the stored draft if it changed elsewhere.",
+        "operationId": "put_draft",
+        "parameters": [
+          {
+            "name": "problem_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveDraft"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/progress": {
+      "get": {
+        "tags": [
+          "student"
+        ],
+        "summary": "Your progress over all problems in sets visible to you.",
+        "operationId": "progress",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Progress"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/submissions": {
+      "get": {
+        "tags": [
+          "submissions"
+        ],
+        "summary": "Your submission history (newest first).",
+        "operationId": "my_submissions",
+        "parameters": [
+          {
+            "name": "problem_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "`run` or `submit`.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_SubmissionSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/problem-sets": {
+      "get": {
+        "tags": [
+          "student"
+        ],
+        "summary": "Published problem sets visible to you.",
+        "operationId": "list_sets",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SetSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/problem-sets/{set}": {
+      "get": {
+        "tags": [
+          "student"
+        ],
+        "summary": "One published problem set with its problems (in order) and your progress.",
+        "operationId": "get_set",
+        "parameters": [
+          {
+            "name": "set",
+            "in": "path",
+            "description": "Set id or slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/problems/{problem}": {
+      "get": {
+        "tags": [
+          "student"
+        ],
+        "summary": "A published problem: statement, examples, starter code and public tests.\nHidden tests and the reference solution are never included.",
+        "operationId": "get_problem",
+        "parameters": [
+          {
+            "name": "problem",
+            "in": "path",
+            "description": "Problem id or slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/site": {
+      "get": {
+        "tags": [
+          "student"
+        ],
+        "summary": "Site name, announcement and which problem set to open by default.",
+        "operationId": "site",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions": {
+      "post": {
+        "tags": [
+          "submissions"
+        ],
+        "summary": "Queue a Run or Submit. Returns immediately (202); poll the submission.\nSend an `Idempotency-Key` header to make retries safe.",
+        "operationId": "create_submission",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Reusing a key returns the original submission instead of creating a new one",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubmission"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Replayed (same Idempotency-Key)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionView"
+                }
+              }
+            }
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionView"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{id}": {
+      "get": {
+        "tags": [
+          "submissions"
+        ],
+        "summary": "Status, test results and teaching cards. Poll until `status` is `done`\nor `system_error`. Hidden tests show only their verdict.",
+        "operationId": "get_submission",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{id}/findings/{finding_id}/hints": {
+      "post": {
+        "tags": [
+          "submissions"
+        ],
+        "summary": "Reveal the next hint level for one card (recorded for teaching statistics).",
+        "operationId": "reveal_hint",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "finding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HintReveal"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{id}/rejudge": {
+      "post": {
+        "tags": [
+          "submissions"
+        ],
+        "summary": "Re-queue a submission that failed because of the judging service.\nIt is judged against the same problem revision as before.",
+        "operationId": "rejudge",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionView"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/status": {
+      "get": {
+        "tags": [
+          "student"
+        ],
+        "summary": "Health of the judging service, for the status banner.",
+        "operationId": "system_status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActiveSet": {
+        "type": "object",
+        "required": [
+          "active_set_id",
+          "slug",
+          "config_version"
+        ],
+        "properties": {
+          "active_set_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "config_version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
+      "ActiveSetInput": {
+        "type": "object",
+        "required": [
+          "problem_set"
+        ],
+        "properties": {
+          "problem_set": {
+            "type": "string",
+            "description": "Id or slug of a published set."
+          }
+        },
+        "additionalProperties": false
+      },
+      "AdminSet": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "description_md",
+          "learned_concepts",
+          "listed",
+          "status",
+          "active",
+          "items",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "description": "This set is the site's active (default) set."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description_md": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SetItem"
+            }
+          },
+          "learned_concepts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "listed": {
+            "type": "boolean"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "`draft`, `published` or `archived`."
+          },
+          "title": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminSubmission": {
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "username",
+          "problem_slug",
+          "problem_title",
+          "revision_number",
+          "kind",
+          "status",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "passed": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "problem_slug": {
+            "type": "string"
+          },
+          "problem_title": {
+            "type": "string"
+          },
+          "revision_number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string"
+          },
+          "total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "verdict": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "AdminUser": {
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "display_name",
+          "role",
+          "disabled",
+          "must_change_password",
+          "created_at"
+        ],
+        "properties": {
+          "cohort_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "cohort_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "last_submission_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "must_change_password": {
+            "type": "boolean"
+          },
+          "role": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "AuditEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "at",
+          "action",
+          "target",
+          "detail"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "actor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "detail": {
+            "type": "object"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "target": {
+            "type": "string"
+          },
+          "via_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "BatchCreate": {
+        "type": "object",
+        "required": [
+          "csv"
+        ],
+        "properties": {
+          "cohort_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "csv": {
+            "type": "string",
+            "description": "One student per line: `username,display name`. Lines starting with `#` are ignored."
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "Validate only."
+          }
+        },
+        "additionalProperties": false
+      },
+      "BatchResult": {
+        "type": "object",
+        "required": [
+          "ok",
+          "errors",
+          "created"
+        ],
+        "properties": {
+          "created": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreatedUser"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            }
+          },
+          "ok": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CardView": {
+        "type": "object",
+        "required": [
+          "finding_id",
+          "rule",
+          "category",
+          "severity",
+          "confidence",
+          "confidence_label",
+          "title",
+          "what",
+          "next_steps",
+          "hints",
+          "hints_total",
+          "hints_allowed",
+          "precision",
+          "in_fixed_region",
+          "primary",
+          "raw"
+        ],
+        "properties": {
+          "cascade_note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "type": "string"
+          },
+          "cause": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "confidence": {
+            "type": "string"
+          },
+          "confidence_label": {
+            "type": "string"
+          },
+          "finding_id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "fixed_region_note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Hints revealed so far (progressive)."
+          },
+          "hints_allowed": {
+            "type": "integer",
+            "description": "How many hints this student may reveal in total (policy).",
+            "minimum": 0
+          },
+          "hints_total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "in_fixed_region": {
+            "type": "boolean"
+          },
+          "maybe_cascade_of": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "next_steps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "precision": {
+            "type": "string"
+          },
+          "precision_note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "primary": {
+            "type": "boolean"
+          },
+          "raw": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "rule": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "span": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "test": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "what": {
+            "type": "string"
+          },
+          "where_text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "why": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CatalogOverview": {
+        "type": "object",
+        "required": [
+          "rules",
+          "texts_have_draft",
+          "pending_changes",
+          "version"
+        ],
+        "properties": {
+          "pending_changes": {
+            "type": "integer",
+            "description": "Number of entries with unpublished changes.",
+            "minimum": 0
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RuleListItem"
+            }
+          },
+          "texts_have_draft": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "properties": {
+          "current_password": {
+            "type": "string"
+          },
+          "new_password": {
+            "type": "string"
+          }
+        }
+      },
+      "Cohort": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "policy",
+          "member_count",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "member_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/PolicyPatch"
+          }
+        }
+      },
+      "CohortInput": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/PolicyPatch"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CompareMode": {
+        "type": "string",
+        "enum": [
+          "trim_trailing_whitespace",
+          "exact"
+        ]
+      },
+      "Concept": {
+        "type": "object",
+        "required": [
+          "id",
+          "label"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateProblem": {
+        "type": "object",
+        "required": [
+          "slug",
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "$ref": "#/components/schemas/ProblemContent"
+          },
+          "slug": {
+            "type": "string",
+            "description": "Stable identifier, immutable after creation."
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateSubmission": {
+        "type": "object",
+        "required": [
+          "problem_id",
+          "kind"
+        ],
+        "properties": {
+          "blanks": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Fill-in problems only: blank id → your code. Fixed code always comes\nfrom the server's copy of the template.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Full-program problems only."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SubmissionKind"
+          },
+          "problem_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "set_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The set you were working in (used for wording and statistics)."
+          },
+          "stdin": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`run` only: use this as stdin instead of the public tests."
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateToken": {
+        "type": "object",
+        "required": [
+          "name",
+          "scopes"
+        ],
+        "properties": {
+          "expires_in_days": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Days until expiry (1–365). Omit for no expiry."
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Scope"
+            },
+            "description": "Least privilege: grant only what the agent needs."
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateUser": {
+        "type": "object",
+        "required": [
+          "username"
+        ],
+        "properties": {
+          "cohort_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "password": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Omit to generate one (returned once)."
+          },
+          "role": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Role",
+                "description": "Defaults to `student`. Creating owners requires an owner session."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreatedToken": {
+        "type": "object",
+        "required": [
+          "info",
+          "token"
+        ],
+        "properties": {
+          "info": {
+            "$ref": "#/components/schemas/TokenInfo"
+          },
+          "token": {
+            "type": "string",
+            "description": "The secret. Shown only once; store it securely. Use as `Authorization: Bearer <token>`."
+          }
+        }
+      },
+      "CreatedUser": {
+        "type": "object",
+        "required": [
+          "user"
+        ],
+        "properties": {
+          "initial_password": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Only present when the password was generated; shown once."
+          },
+          "user": {
+            "$ref": "#/components/schemas/AdminUser"
+          }
+        }
+      },
+      "CreditInput": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomRuleEditor": {
+        "type": "object",
+        "required": [
+          "id",
+          "delete_pending"
+        ],
+        "properties": {
+          "delete_pending": {
+            "type": "boolean",
+            "description": "Publishing will remove this rule."
+          },
+          "draft": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Unpublished edit, if any."
+          },
+          "id": {
+            "type": "string"
+          },
+          "published": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Version students currently get (absent if never published)."
+          }
+        }
+      },
+      "CustomRuleInput": {
+        "type": "object",
+        "required": [
+          "rule",
+          "positive_examples"
+        ],
+        "properties": {
+          "negative_examples": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Programs that must NOT be matched by this rule."
+          },
+          "positive_examples": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Programs that must produce a diagnostic matched by this rule\n(compiled with the real toolchain). At least one is required."
+          },
+          "rule": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomRuleResult": {
+        "type": "object",
+        "required": [
+          "id",
+          "matched_messages"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "matched_messages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "For each positive example: the compiler message that matched."
+          }
+        }
+      },
+      "DiffKind": {
+        "type": "string",
+        "enum": [
+          "same",
+          "missing",
+          "extra"
+        ]
+      },
+      "DiffLine": {
+        "type": "object",
+        "required": [
+          "kind",
+          "text"
+        ],
+        "properties": {
+          "actual_line": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "1-based line number in the actual output (for Same/Extra).",
+            "minimum": 0
+          },
+          "expected_line": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "1-based line number in the expected output (for Same/Missing).",
+            "minimum": 0
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DiffKind"
+          },
+          "text": {
+            "type": "string",
+            "description": "Line content with whitespace made visible: space → `·`, tab → `→`,\nand a trailing `↵` when the line ended with a newline."
+          }
+        }
+      },
+      "Draft": {
+        "type": "object",
+        "required": [
+          "code",
+          "version"
+        ],
+        "properties": {
+          "blanks": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Fill-in problems: blank id → text.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "code": {
+            "type": "string",
+            "description": "Full-program problems: the editor content."
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Increments on every save; send it back as `base_version`."
+          }
+        }
+      },
+      "EffectivePolicy": {
+        "type": "object",
+        "required": [
+          "learned_concepts",
+          "visible_set_ids",
+          "extra_set_ids",
+          "default_set_id",
+          "auto_reveal_hints",
+          "max_hint_levels",
+          "raw_expanded",
+          "runs_per_minute",
+          "submits_per_minute"
+        ],
+        "properties": {
+          "auto_reveal_hints": {
+            "$ref": "#/components/schemas/Sourced_u8"
+          },
+          "default_set_id": {
+            "$ref": "#/components/schemas/Sourced_Option_String"
+          },
+          "extra_set_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "learned_concepts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Union of site, cohort and student concepts (problem/set concepts are added per request)."
+          },
+          "max_hint_levels": {
+            "$ref": "#/components/schemas/Sourced_Option_u8"
+          },
+          "raw_expanded": {
+            "$ref": "#/components/schemas/Sourced_bool"
+          },
+          "runs_per_minute": {
+            "$ref": "#/components/schemas/Sourced_u32"
+          },
+          "submits_per_minute": {
+            "$ref": "#/components/schemas/Sourced_u32"
+          },
+          "visible_set_ids": {
+            "$ref": "#/components/schemas/Sourced_Option_Vec_String"
+          }
+        }
+      },
+      "Example": {
+        "type": "object",
+        "required": [
+          "input",
+          "output"
+        ],
+        "properties": {
+          "explanation_md": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "input": {
+            "type": "string"
+          },
+          "output": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FieldError": {
+        "type": "object",
+        "required": [
+          "pointer",
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable code, e.g. `required`, `too_long`, `invalid`."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable explanation (Traditional Chinese)."
+          },
+          "pointer": {
+            "type": "string",
+            "description": "JSON Pointer (RFC 6901) to the offending field, relative to the request body."
+          }
+        }
+      },
+      "HintReveal": {
+        "type": "object",
+        "required": [
+          "finding_id",
+          "hints",
+          "hints_total",
+          "hints_allowed"
+        ],
+        "properties": {
+          "finding_id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "hints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hints_allowed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hints_total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "HistoryEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "key",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "key": {
+            "type": "string"
+          },
+          "published": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "The published value (null = reverted to built-in / removed)."
+          }
+        }
+      },
+      "ImportDocument": {
+        "type": "object",
+        "required": [
+          "format_version"
+        ],
+        "properties": {
+          "format_version": {
+            "type": "string",
+            "description": "Must be `cycu-cal.import/v1`."
+          },
+          "problem_sets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportSet"
+            }
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportProblem"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ImportItemResult": {
+        "type": "object",
+        "required": [
+          "pointer",
+          "slug",
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "description": "`create`, `update` (new revision / changed set) or `unchanged`."
+          },
+          "id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "pointer": {
+            "type": "string",
+            "description": "JSON Pointer of the item in the document."
+          },
+          "revision_number": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
+      "ImportProblem": {
+        "type": "object",
+        "required": [
+          "slug",
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "$ref": "#/components/schemas/ProblemContent"
+          },
+          "slug": {
+            "type": "string",
+            "description": "Stable identifier (lower-case letters, digits, hyphens)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "ImportReport": {
+        "type": "object",
+        "required": [
+          "dry_run",
+          "ok",
+          "errors",
+          "problems",
+          "problem_sets"
+        ],
+        "properties": {
+          "dry_run": {
+            "type": "boolean"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            }
+          },
+          "ok": {
+            "type": "boolean",
+            "description": "True when the document is valid (and, unless dry-run, was applied)."
+          },
+          "problem_sets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportItemResult"
+            }
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportItemResult"
+            }
+          }
+        }
+      },
+      "ImportSet": {
+        "type": "object",
+        "required": [
+          "slug",
+          "title",
+          "problems"
+        ],
+        "properties": {
+          "description_md": {
+            "type": "string"
+          },
+          "learned_concepts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Concepts students are assumed to know in this set."
+          },
+          "listed": {
+            "type": "boolean",
+            "description": "Unlisted sets are only visible to cohorts/students granted access."
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Problem slugs in display order (from this document or already in the bank)."
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ItemsInput": {
+        "type": "object",
+        "required": [
+          "problems"
+        ],
+        "properties": {
+          "problems": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Problem ids or slugs in display order. Problems not listed are removed\nfrom this set only."
+          }
+        },
+        "additionalProperties": false
+      },
+      "JudgeHealth": {
+        "type": "string",
+        "enum": [
+          "ok",
+          "down",
+          "unknown"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "password": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "MatrixProblem": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "title"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "MatrixRow": {
+        "type": "object",
+        "required": [
+          "user_id",
+          "username",
+          "display_name",
+          "cells",
+          "solved"
+        ],
+        "properties": {
+          "cells": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "One entry per problem (same order): `solved`, `credited`, `attempted` or `not_started`."
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "solved": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "Me": {
+        "type": "object",
+        "required": [
+          "user"
+        ],
+        "properties": {
+          "csrf_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Send as `X-CSRF-Token` on every non-GET request made with the session cookie."
+          },
+          "token_scopes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Present when authenticated with an API token."
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserInfo"
+          }
+        }
+      },
+      "NewPassword": {
+        "type": "object",
+        "required": [
+          "password"
+        ],
+        "properties": {
+          "password": {
+            "type": "string",
+            "description": "Shown once. The user must change it at next login."
+          }
+        }
+      },
+      "Overview": {
+        "type": "object",
+        "required": [
+          "students",
+          "submissions_today",
+          "accepted_today",
+          "queue_length",
+          "system_errors_24h",
+          "judge",
+          "draft_problems",
+          "problems_with_unpublished_changes",
+          "catalog_pending_changes"
+        ],
+        "properties": {
+          "accepted_today": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "active_set_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "catalog_pending_changes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "draft_problems": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "judge": {
+            "$ref": "#/components/schemas/JudgeHealth"
+          },
+          "problems_with_unpublished_changes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "queue_length": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "runner": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "students": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "submissions_today": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "system_errors_24h": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "Page_AdminSubmission": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "user_id",
+                "username",
+                "problem_slug",
+                "problem_title",
+                "revision_number",
+                "kind",
+                "status",
+                "created_at"
+              ],
+              "properties": {
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "passed": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "int32"
+                },
+                "problem_slug": {
+                  "type": "string"
+                },
+                "problem_title": {
+                  "type": "string"
+                },
+                "revision_number": {
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "total": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "int32"
+                },
+                "user_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "username": {
+                  "type": "string"
+                },
+                "verdict": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pass as `cursor` to get the next page; absent on the last page."
+          }
+        }
+      },
+      "Page_AdminUser": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "username",
+                "display_name",
+                "role",
+                "disabled",
+                "must_change_password",
+                "created_at"
+              ],
+              "properties": {
+                "cohort_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uuid"
+                },
+                "cohort_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "disabled": {
+                  "type": "boolean"
+                },
+                "display_name": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "last_submission_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "must_change_password": {
+                  "type": "boolean"
+                },
+                "role": {
+                  "type": "string"
+                },
+                "username": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pass as `cursor` to get the next page; absent on the last page."
+          }
+        }
+      },
+      "Page_AuditEntry": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "at",
+                "action",
+                "target",
+                "detail"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "actor": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "detail": {
+                  "type": "object"
+                },
+                "id": {
+                  "type": "integer",
+                  "format": "int64"
+                },
+                "target": {
+                  "type": "string"
+                },
+                "via_token": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pass as `cursor` to get the next page; absent on the last page."
+          }
+        }
+      },
+      "Page_ProblemSummary": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "slug",
+                "title",
+                "status",
+                "head_revision_number",
+                "has_unpublished_changes",
+                "set_count",
+                "concepts",
+                "mode",
+                "updated_at"
+              ],
+              "properties": {
+                "concepts": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "has_unpublished_changes": {
+                  "type": "boolean"
+                },
+                "head_revision_number": {
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "mode": {
+                  "$ref": "#/components/schemas/ProblemMode"
+                },
+                "published_revision_number": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "int32"
+                },
+                "set_count": {
+                  "type": "integer",
+                  "format": "int64"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pass as `cursor` to get the next page; absent on the last page."
+          }
+        }
+      },
+      "Page_SubmissionSummary": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "problem_id",
+                "problem_slug",
+                "problem_title",
+                "revision_number",
+                "kind",
+                "status",
+                "created_at"
+              ],
+              "properties": {
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "passed": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "int32"
+                },
+                "problem_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "problem_slug": {
+                  "type": "string"
+                },
+                "problem_title": {
+                  "type": "string"
+                },
+                "revision_number": {
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "total": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "int32"
+                },
+                "verdict": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pass as `cursor` to get the next page; absent on the last page."
+          }
+        }
+      },
+      "PolicyPatch": {
+        "type": "object",
+        "description": "Every field is optional; unset fields fall through to the next level.",
+        "properties": {
+          "auto_reveal_hints": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Hint levels shown without clicking (0 = only the card).",
+            "minimum": 0
+          },
+          "default_set_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Set shown on entry instead of the site's active set."
+          },
+          "extra_set_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Additional sets (including unlisted ones) visible at this level."
+          },
+          "learned_concepts": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Concepts added at this level (union with other levels)."
+          },
+          "max_hint_levels": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Maximum hint levels a student may reveal (`None` = all).",
+            "minimum": 0
+          },
+          "raw_expanded": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Expand the original compiler message by default."
+          },
+          "runs_per_minute": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "submits_per_minute": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "visible_set_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Restrict visible published sets to these (cohort level). `None` = all listed sets."
+          }
+        },
+        "additionalProperties": false
+      },
+      "PolicyView": {
+        "type": "object",
+        "required": [
+          "overrides",
+          "effective"
+        ],
+        "properties": {
+          "cohort": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PolicyPatch",
+                "description": "The cohort's settings (if any)."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effective": {
+            "$ref": "#/components/schemas/EffectivePolicy",
+            "description": "Resulting values with the level each one came from."
+          },
+          "overrides": {
+            "$ref": "#/components/schemas/PolicyPatch",
+            "description": "The student's own overrides."
+          }
+        }
+      },
+      "PreviewRequest": {
+        "type": "object",
+        "properties": {
+          "concepts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Pretend the student has learned these concepts."
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Compile this program with the real toolchain and explain it."
+          },
+          "submission_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Or re-explain an existing submission (student identity is not shown)."
+          },
+          "use_drafts": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Include unpublished drafts (default true)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "PreviewResult": {
+        "type": "object",
+        "required": [
+          "compile_success",
+          "cards"
+        ],
+        "properties": {
+          "cards": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Every card with all hint levels."
+          },
+          "compile_success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ProblemContent": {
+        "type": "object",
+        "description": "Everything that defines one revision of a problem.",
+        "required": [
+          "title",
+          "statement_md",
+          "tests"
+        ],
+        "properties": {
+          "compare_mode": {
+            "$ref": "#/components/schemas/CompareMode"
+          },
+          "concepts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Concepts students are assumed to know for this problem."
+          },
+          "examples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Example"
+            }
+          },
+          "limits": {
+            "$ref": "#/components/schemas/ProblemLimits"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/ProblemMode"
+          },
+          "reference_blanks": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Owner-only reference blanks (mode `fill_in`).",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "reference_solution": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Owner-only reference program (mode `full`); must pass every test to publish."
+          },
+          "starter_code": {
+            "type": "string",
+            "description": "Initial editor content (mode `full`)."
+          },
+          "statement_md": {
+            "type": "string",
+            "description": "Markdown. Rendered safely (no raw HTML)."
+          },
+          "template": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Fill-in template with `/*@blank id@*/ … /*@end@*/` regions (mode `fill_in`)."
+          },
+          "tests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TestCaseInput"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProblemDetail": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "status",
+          "head_revision",
+          "has_unpublished_changes",
+          "sets",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "has_unpublished_changes": {
+            "type": "boolean",
+            "description": "The head revision differs from the published one."
+          },
+          "head_revision": {
+            "$ref": "#/components/schemas/RevisionDetail"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "published_revision_number": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Revision students currently get (None if never published)."
+          },
+          "revision_created": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Only on writes: whether a new revision was created (false = no change)."
+          },
+          "sets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SetRef"
+            },
+            "description": "Sets that include this problem."
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "`draft`, `published` or `archived`."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable code."
+          },
+          "data": {
+            "description": "Extra structured data for some errors (e.g. the current draft on conflict)."
+          },
+          "detail": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            },
+            "description": "Field-level problems (JSON Pointers into the request body)."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "URI identifying the error type (`about:blank` style codes under /errors/)."
+          }
+        }
+      },
+      "ProblemLimits": {
+        "type": "object",
+        "required": [
+          "time_ms",
+          "memory_kb",
+          "output_kb"
+        ],
+        "properties": {
+          "memory_kb": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Memory per test, KiB (16384–262144).",
+            "minimum": 0
+          },
+          "output_kb": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Output size per test, KiB (1–1024).",
+            "minimum": 0
+          },
+          "time_ms": {
+            "type": "integer",
+            "format": "int32",
+            "description": "CPU time per test, milliseconds (100–5000).",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProblemMode": {
+        "type": "string",
+        "enum": [
+          "full",
+          "fill_in"
+        ]
+      },
+      "ProblemProgress": {
+        "type": "object",
+        "required": [
+          "problem_id",
+          "slug",
+          "title",
+          "status",
+          "submissions",
+          "credited"
+        ],
+        "properties": {
+          "credited": {
+            "type": "boolean"
+          },
+          "last_submitted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "problem_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "`solved`, `attempted` or `not_started`."
+          },
+          "submissions": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "ProblemSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "status",
+          "head_revision_number",
+          "has_unpublished_changes",
+          "set_count",
+          "concepts",
+          "mode",
+          "updated_at"
+        ],
+        "properties": {
+          "concepts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "has_unpublished_changes": {
+            "type": "boolean"
+          },
+          "head_revision_number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/ProblemMode"
+          },
+          "published_revision_number": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "set_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ProblemView": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "revision_number",
+          "title",
+          "statement_md",
+          "examples",
+          "mode",
+          "initial_code",
+          "limits",
+          "compare_mode",
+          "compare_description",
+          "concepts",
+          "public_tests",
+          "hidden_test_count"
+        ],
+        "properties": {
+          "compare_description": {
+            "type": "string"
+          },
+          "compare_mode": {
+            "$ref": "#/components/schemas/CompareMode"
+          },
+          "concepts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "examples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Example"
+            }
+          },
+          "hidden_test_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "initial_code": {
+            "type": "string",
+            "description": "Editor content to start from (full program, or the assembled template)."
+          },
+          "limits": {
+            "$ref": "#/components/schemas/ProblemLimits"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/ProblemMode"
+          },
+          "public_tests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicTest"
+            }
+          },
+          "revision_number": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The published revision number students currently get."
+          },
+          "segments": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            },
+            "description": "Fill-in only: template segments; only `blank` segments are editable."
+          },
+          "slug": {
+            "type": "string"
+          },
+          "statement_md": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "Progress": {
+        "type": "object",
+        "required": [
+          "solved",
+          "attempted",
+          "total",
+          "problems"
+        ],
+        "properties": {
+          "attempted": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProblemProgress"
+            }
+          },
+          "solved": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ProgressMatrix": {
+        "type": "object",
+        "required": [
+          "problems",
+          "rows"
+        ],
+        "properties": {
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatrixProblem"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatrixRow"
+            }
+          }
+        }
+      },
+      "PublicTest": {
+        "type": "object",
+        "required": [
+          "number",
+          "input",
+          "expected_output"
+        ],
+        "properties": {
+          "expected_output": {
+            "type": "string"
+          },
+          "input": {
+            "type": "string"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "PublishResult": {
+        "type": "object",
+        "required": [
+          "published_keys",
+          "version"
+        ],
+        "properties": {
+          "published_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "RevisionDetail": {
+        "type": "object",
+        "required": [
+          "number",
+          "content",
+          "content_hash",
+          "created_at"
+        ],
+        "properties": {
+          "content": {
+            "$ref": "#/components/schemas/ProblemContent"
+          },
+          "content_hash": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "RevisionSelector": {
+        "type": "object",
+        "properties": {
+          "revision_number": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Defaults to the head revision."
+          }
+        },
+        "additionalProperties": false
+      },
+      "RevisionSummary": {
+        "type": "object",
+        "required": [
+          "number",
+          "title",
+          "content_hash",
+          "created_at",
+          "published",
+          "submission_count"
+        ],
+        "properties": {
+          "content_hash": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "submission_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Student runs/submissions judged against this revision (owner test runs excluded)."
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "student",
+          "owner"
+        ]
+      },
+      "RuleEditor": {
+        "type": "object",
+        "required": [
+          "id",
+          "vars",
+          "published",
+          "reset_pending"
+        ],
+        "properties": {
+          "builtin": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Wording shipped with the system."
+          },
+          "draft": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Unpublished edit, if any."
+          },
+          "id": {
+            "type": "string"
+          },
+          "published": {
+            "type": "object",
+            "description": "Wording students currently see."
+          },
+          "reset_pending": {
+            "type": "boolean",
+            "description": "Publishing will revert this rule to the built-in wording."
+          },
+          "vars": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RuleListItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "state",
+          "has_draft",
+          "enabled",
+          "priority",
+          "title",
+          "vars",
+          "hits_7d"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "has_draft": {
+            "type": "boolean"
+          },
+          "hits_7d": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Submissions in the last 7 days that hit this rule."
+          },
+          "id": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "state": {
+            "type": "string",
+            "description": "`builtin` (unchanged), `edited` (published override) or `custom`."
+          },
+          "title": {
+            "type": "string"
+          },
+          "vars": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Variables available in this rule's templates."
+          }
+        }
+      },
+      "RuleStat": {
+        "type": "object",
+        "required": [
+          "rule",
+          "count",
+          "students",
+          "hints_revealed"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Submissions that triggered the rule in the period."
+          },
+          "hints_revealed": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Hint levels revealed on cards of this rule."
+          },
+          "rule": {
+            "type": "string"
+          },
+          "students": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SaveDraft": {
+        "type": "object",
+        "properties": {
+          "base_version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "The version you last loaded/saved. Omit to overwrite unconditionally."
+          },
+          "blanks": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "code": {
+            "type": "string"
+          }
+        }
+      },
+      "Scope": {
+        "type": "string",
+        "description": "Least-privilege permissions for API tokens. Owner sessions hold all of them.",
+        "enum": [
+          "problems:read",
+          "problems:write",
+          "sets:write",
+          "publish",
+          "submissions:read",
+          "content:write",
+          "students:read",
+          "students:write",
+          "settings:write"
+        ]
+      },
+      "Segment": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "text",
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "fixed"
+                ]
+              },
+              "text": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "default",
+              "kind"
+            ],
+            "properties": {
+              "default": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "blank"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "SetDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SetSummary"
+          },
+          {
+            "type": "object",
+            "required": [
+              "problems"
+            ],
+            "properties": {
+              "problems": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SetProblemItem"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "SetInput": {
+        "type": "object",
+        "required": [
+          "slug",
+          "title"
+        ],
+        "properties": {
+          "description_md": {
+            "type": "string"
+          },
+          "learned_concepts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "listed": {
+            "type": "boolean"
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Problem ids or slugs, in order. Optional on create."
+          },
+          "slug": {
+            "type": "string",
+            "description": "Stable identifier (immutable)."
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetItem": {
+        "type": "object",
+        "required": [
+          "position",
+          "problem_id",
+          "slug",
+          "title",
+          "problem_status"
+        ],
+        "properties": {
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "problem_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "problem_status": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "SetProblemItem": {
+        "type": "object",
+        "required": [
+          "position",
+          "problem_id",
+          "slug",
+          "title",
+          "mode",
+          "progress"
+        ],
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/ProblemMode"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "problem_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "progress": {
+            "type": "string",
+            "description": "`solved`, `attempted` or `not_started`."
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "SetRef": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "SetSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "description_md",
+          "learned_concepts",
+          "problem_count",
+          "solved_count",
+          "active"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "description": "This is the site's currently active set."
+          },
+          "description_md": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "learned_concepts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "problem_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "solved_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "SettingsView": {
+        "type": "object",
+        "required": [
+          "settings",
+          "version"
+        ],
+        "properties": {
+          "active_set_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/SiteSettings"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SiteInfo": {
+        "type": "object",
+        "required": [
+          "site_name",
+          "announcement_md",
+          "config_version"
+        ],
+        "properties": {
+          "active_set_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The owner-selected active set (the default entry point)."
+          },
+          "announcement_md": {
+            "type": "string"
+          },
+          "config_version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Bumps whenever online settings change; clients poll it to detect switches."
+          },
+          "default_set_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The set this user should land on (cohort/student settings may differ)."
+          },
+          "site_name": {
+            "type": "string"
+          }
+        }
+      },
+      "SiteSettings": {
+        "type": "object",
+        "properties": {
+          "announcement_md": {
+            "type": "string",
+            "description": "Markdown shown on the student home page (rendered without raw HTML).",
+            "default": ""
+          },
+          "default_compare_mode": {
+            "$ref": "#/components/schemas/CompareMode",
+            "default": "trim_trailing_whitespace"
+          },
+          "default_limits": {
+            "$ref": "#/components/schemas/ProblemLimits",
+            "description": "Defaults for newly created problems.",
+            "default": {
+              "memory_kb": 65536,
+              "output_kb": 64,
+              "time_ms": 1000
+            }
+          },
+          "default_policy": {
+            "$ref": "#/components/schemas/PolicyPatch",
+            "description": "Site-level policy (lowest precedence; cohorts and students override it).",
+            "default": {
+              "auto_reveal_hints": 0,
+              "learned_concepts": [
+                "io",
+                "variables"
+              ],
+              "raw_expanded": false,
+              "runs_per_minute": 10,
+              "submits_per_minute": 5
+            }
+          },
+          "site_name": {
+            "type": "string",
+            "default": "CYCU-CAL 程式讀書會"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Source": {
+        "type": "string",
+        "enum": [
+          "site",
+          "cohort",
+          "student"
+        ]
+      },
+      "Sourced_Option_String": {
+        "type": "object",
+        "required": [
+          "value",
+          "source"
+        ],
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      "Sourced_Option_Vec_String": {
+        "type": "object",
+        "required": [
+          "value",
+          "source"
+        ],
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "Sourced_Option_u8": {
+        "type": "object",
+        "required": [
+          "value",
+          "source"
+        ],
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "integer",
+                "format": "int32",
+                "minimum": 0
+              }
+            ]
+          }
+        }
+      },
+      "Sourced_bool": {
+        "type": "object",
+        "required": [
+          "value",
+          "source"
+        ],
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "value": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Sourced_u32": {
+        "type": "object",
+        "required": [
+          "value",
+          "source"
+        ],
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "value": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "Sourced_u8": {
+        "type": "object",
+        "required": [
+          "value",
+          "source"
+        ],
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "value": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "SubmissionKind": {
+        "type": "string",
+        "enum": [
+          "run",
+          "submit"
+        ]
+      },
+      "SubmissionSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "problem_id",
+          "problem_slug",
+          "problem_title",
+          "revision_number",
+          "kind",
+          "status",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "passed": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "problem_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "problem_slug": {
+            "type": "string"
+          },
+          "problem_title": {
+            "type": "string"
+          },
+          "revision_number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string"
+          },
+          "total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "verdict": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SubmissionView": {
+        "type": "object",
+        "required": [
+          "id",
+          "problem_id",
+          "problem_slug",
+          "problem_title",
+          "revision_number",
+          "kind",
+          "status",
+          "status_text",
+          "created_at",
+          "code",
+          "tests",
+          "cards",
+          "compare_mode",
+          "compare_description",
+          "retryable",
+          "raw_expanded"
+        ],
+        "properties": {
+          "assembled_source": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Owner only: the exact program that was compiled and judge diagnostics."
+          },
+          "attempts": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "blanks": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CardView"
+            }
+          },
+          "code": {
+            "type": "string"
+          },
+          "compare_description": {
+            "type": "string"
+          },
+          "compare_mode": {
+            "$ref": "#/components/schemas/CompareMode"
+          },
+          "compile_success": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "custom_stdin": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "description": "`run`, `submit` or `test_run` (owner)."
+          },
+          "last_error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "passed": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "problem_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "problem_slug": {
+            "type": "string"
+          },
+          "problem_title": {
+            "type": "string"
+          },
+          "raw_expanded": {
+            "type": "boolean",
+            "description": "Policy: expand original compiler messages by default."
+          },
+          "retryable": {
+            "type": "boolean",
+            "description": "The judging service failed; the student may ask for a re-judge."
+          },
+          "revision_number": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The immutable problem revision this submission was judged against."
+          },
+          "set_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "description": "`queued`, `compiling`, `running`, `done` or `system_error`."
+          },
+          "status_text": {
+            "type": "string",
+            "description": "Human-readable status in Traditional Chinese."
+          },
+          "tests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TestView"
+            }
+          },
+          "total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "user_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "verdict": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SystemStatus": {
+        "type": "object",
+        "required": [
+          "judge",
+          "queue_length"
+        ],
+        "properties": {
+          "judge": {
+            "$ref": "#/components/schemas/JudgeHealth"
+          },
+          "judge_checked_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "queue_length": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Submissions waiting or being judged."
+          }
+        }
+      },
+      "TestCaseInput": {
+        "type": "object",
+        "required": [
+          "input",
+          "expected_output"
+        ],
+        "properties": {
+          "expected_output": {
+            "type": "string"
+          },
+          "input": {
+            "type": "string"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/Visibility"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TestRunRequest": {
+        "type": "object",
+        "properties": {
+          "blanks": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revision_number": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "stdin": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Use this stdin instead of the tests."
+          },
+          "use_reference": {
+            "type": "boolean",
+            "description": "Run the stored reference solution instead of `code`/`blanks`."
+          }
+        },
+        "additionalProperties": false
+      },
+      "TestVerdict": {
+        "type": "string",
+        "enum": [
+          "accepted",
+          "wrong_answer",
+          "runtime_error",
+          "time_limit",
+          "memory_limit",
+          "output_limit",
+          "skipped",
+          "completed"
+        ]
+      },
+      "TestView": {
+        "type": "object",
+        "required": [
+          "number",
+          "hidden",
+          "custom",
+          "verdict",
+          "time_ms",
+          "memory_kb",
+          "output_truncated",
+          "diff_truncated"
+        ],
+        "properties": {
+          "actual_output": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "custom": {
+            "type": "boolean",
+            "description": "Custom stdin run (no expected output)."
+          },
+          "diff": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/DiffLine"
+            },
+            "description": "Line diff with visible whitespace (public tests that failed)."
+          },
+          "diff_truncated": {
+            "type": "boolean"
+          },
+          "exit_code": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "expected_output": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "input": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Omitted for hidden tests (students)."
+          },
+          "memory_kb": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "output_truncated": {
+            "type": "boolean"
+          },
+          "signal": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "stderr": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "time_ms": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/TestVerdict"
+          }
+        }
+      },
+      "TextsEditor": {
+        "type": "object",
+        "required": [
+          "builtin",
+          "published",
+          "required_keys"
+        ],
+        "properties": {
+          "builtin": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "draft": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "published": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "required_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TokenInfo": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "scopes",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "last_used_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "revoked_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "UpdateProblem": {
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "$ref": "#/components/schemas/ProblemContent"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateUser": {
+        "type": "object",
+        "properties": {
+          "clear_cohort": {
+            "type": "boolean"
+          },
+          "cohort_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Set to move the student; send `\"clear_cohort\": true` to remove."
+          },
+          "disabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserInfo": {
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "display_name",
+          "role",
+          "must_change_password"
+        ],
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "must_change_password": {
+            "type": "boolean"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "UserProblemProgress": {
+        "type": "object",
+        "required": [
+          "problem_id",
+          "slug",
+          "title",
+          "submissions",
+          "runs",
+          "solved",
+          "credited",
+          "frequent_rules",
+          "hints_revealed"
+        ],
+        "properties": {
+          "credited": {
+            "type": "boolean"
+          },
+          "frequent_rules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Rules most often hit by this student on this problem."
+          },
+          "hints_revealed": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Hint levels revealed (total)."
+          },
+          "last_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "last_verdict": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "problem_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "runs": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "solved": {
+            "type": "boolean"
+          },
+          "submissions": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "ValidationReport": {
+        "type": "object",
+        "required": [
+          "ok",
+          "revision_number",
+          "errors"
+        ],
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            }
+          },
+          "ok": {
+            "type": "boolean",
+            "description": "True when the revision can be published."
+          },
+          "reference_run": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SubmissionView",
+                "description": "Result of running the reference solution against every test."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision_number": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "Visibility": {
+        "type": "string",
+        "enum": [
+          "public",
+          "hidden"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "ccal_session"
+      },
+      "token": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "ccal_<secret>"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "auth",
+      "description": "Login, logout, current user, password"
+    },
+    {
+      "name": "student",
+      "description": "What students see: sets, problems, drafts, progress"
+    },
+    {
+      "name": "submissions",
+      "description": "Run / Submit and results with teaching cards"
+    },
+    {
+      "name": "admin: problems",
+      "description": "Problem bank with immutable revisions"
+    },
+    {
+      "name": "admin: problem sets",
+      "description": "Ordered sets of bank problems; active set"
+    },
+    {
+      "name": "admin: import/export",
+      "description": "JSON import (cycu-cal.import/v1) with dry-run"
+    },
+    {
+      "name": "admin: teaching text",
+      "description": "Online editing of diagnostic explanations"
+    },
+    {
+      "name": "admin: students",
+      "description": "Accounts, cohorts, overrides, progress"
+    },
+    {
+      "name": "admin: system",
+      "description": "Settings, API tokens, audit log, submissions"
+    }
+  ]
+}

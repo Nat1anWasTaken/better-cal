@@ -1,0 +1,75 @@
+# printf / scanf 的格式與參數。
+
+[rules."format.scanf_missing_address"]
+title = "scanf 不知道要把讀到的值存在哪裡"
+what = "第 {line} 行的 scanf 用 `{spec}` 讀取一個值，但第 {arg_number} 個參數{?arg} `{arg}` {/arg}給的是一個「數值」，而不是「存放的位置」。"
+cause = "這裡需要告訴 scanf 要把讀到的數字存在哪裡，但目前給它的可能是變數裡的數值。"
+where = "第 {line} 行，scanf 括號裡{?arg}的 `{arg}`{/arg}{!arg}第 {arg_number} 個參數{/arg}。"
+why = "printf 只需要「看」變數的值，所以直接寫變數名稱就好。scanf 卻要把讀到的資料「放進」變數，所以它需要知道變數在哪裡，而不是變數現在的值。"
+next_steps = [
+  "比較同一行的其他參數：哪些前面有符號、哪些沒有？",
+  "回想課堂上 scanf 的寫法，和這一行比較看看有什麼不同。",
+]
+hints = [
+  "scanf 需要的是「變數的位置」。C 語言用一個特別的符號，放在變數名稱前面，表示「這個變數的位置」。",
+  "這個符號是 `&`。範例（跟你的程式無關）：`scanf(\"%d\", &age);` 意思是「讀一個整數，存進 age 這個變數的位置」。",
+  "注意：讀字串到 char 陣列時（`%s`）不需要 `&`，那是另一種情況。",
+]
+variants = [
+  { when_concepts = ["pointers"], cause = "scanf 需要變數的位址（指標，pointer），但這裡傳入的是變數的值。", why = "scanf 透過指標把讀到的資料寫回變數。`{spec}` 需要對應的指標參數，而目前的參數不是指標。", hints = ["檢查這個參數的型別：scanf 需要的是位址。", "用取址運算子 `&` 取得變數的位址；若參數本身已經是指標變數，則不需要再加。"] },
+]
+
+[rules."format.scanf_string_address"]
+title = "讀字串時，陣列名稱前面不需要 `&`"
+what = "第 {line} 行用 `{spec}` 讀取字串到{?arg} `{arg}`{/arg}，但參數的型別跟 scanf 預期的不同。"
+cause = "很可能是在 char 陣列的名稱前面加了 `&`。"
+where = "第 {line} 行的 scanf。"
+why = "char 陣列的名稱本身就已經代表「存放的位置」，所以用 `%s` 讀字串時直接寫陣列名稱就好，這和讀整數不一樣。"
+next_steps = ["看第 {line} 行 scanf 裡的字串變數，前面是不是有 `&`。"]
+hints = ["範例（跟你的程式無關）：`char name[20]; scanf(\"%19s\", name);`。`%19s` 的 19 可以避免讀入超過陣列能放的字數。"]
+variants = [
+  { when_concepts = ["pointers"], why = "陣列名稱在這裡會自動轉成指向第一個元素的指標（`char *`）。加上 `&` 會變成「指向整個陣列」的指標，型別不同。" },
+]
+
+[rules."format.scanf_type_mismatch"]
+title = "scanf 的格式 `{spec}` 和變數型別不一致"
+what = "第 {line} 行的 scanf 用 `{spec}` 讀取，但{?arg} `{arg}` {/arg}的型別跟 `{spec}` 需要的不一樣（編譯器說：需要 `{expected}`，實際是 `{actual}`）。"
+cause = "很可能是格式字串選錯了，或是變數宣告的型別跟想讀的資料不一樣。"
+where = "第 {line} 行。"
+why = "scanf 會依照格式字串把資料「照格式」寫進變數。格式和變數型別不一致時，存進去的值會是錯的。"
+next_steps = ["找到{?arg} `{arg}` {/arg}的宣告，看它是什麼型別。", "對照下面的提示，選擇跟型別相符的格式。"]
+hints = [
+  "常用的對應：`int` 用 `%d`；`double` 用 `%lf`；`float` 用 `%f`；`char` 用 `%c`。",
+  "{?suggest_spec}依照這個變數的型別，scanf 應該使用的格式是 `{suggest_spec}`。{/suggest_spec}{!suggest_spec}如果不確定，可以把變數改成最常用的型別（整數用 `int`、小數用 `double`）。{/suggest_spec}",
+  "注意：printf 輸出 `double` 用 `%f` 就可以，但 scanf 讀 `double` 必須用 `%lf`。",
+]
+
+[rules."format.printf_type_mismatch"]
+title = "printf 的格式 `{spec}` 和要輸出的值不一致"
+what = "第 {line} 行的 printf 用 `{spec}` 輸出{?arg} `{arg}`{/arg}，但這個值的型別是 `{actual}`，而 `{spec}` 需要 `{expected}`。"
+cause = "格式字串和值的型別不一致時，印出來的數字可能完全錯誤（例如印出很奇怪的大數字或 0）。"
+where = "第 {line} 行。"
+why = "printf 不會自動轉換型別，它只會照著格式去解讀資料。用整數的格式去讀小數（或反過來），結果就會亂掉。"
+next_steps = ["確認{?arg} `{arg}` {/arg}是整數還是有小數點的數。", "讓格式和型別對應起來。"]
+hints = [
+  "常用的對應：整數 `int` 用 `%d`；小數 `double` 用 `%f`；字元 `char` 用 `%c`；字串用 `%s`。",
+  "{?suggest_spec}`{actual}` 型別通常用 `{suggest_spec}` 輸出。{/suggest_spec}{!suggest_spec}檢查這個值的型別，選擇對應的格式。{/suggest_spec}",
+  "如果你想印出小數點後兩位，可以使用 `%.2f`。",
+]
+
+[rules."format.missing_argument"]
+title = "格式字串裡的 `%` 比後面的值多"
+what = "第 {line} 行的{?call} {call} {/call}格式字串裡有 `{spec}`，但後面沒有提供對應的值。"
+where = "第 {line} 行。"
+why = "格式字串裡每一個 `%d`、`%f`…都是一個「空位」，要依序用逗號後面的值來填。值不夠時，程式會用不確定的資料去填。"
+next_steps = ["數一數格式字串裡有幾個 `%`，再數一數逗號後面有幾個值。"]
+hints = ["例如 `printf(\"%d + %d = %d\\n\", a, b, a + b);` 有三個 `%d`，後面就要有三個值。"]
+
+[rules."format.extra_argument"]
+title = "後面給的值比格式字串的 `%` 多"
+what = "第 {line} 行的{?call} {call} {/call}在格式字串後面給了比較多的值，多出來的值不會被使用。"
+cause = "可能是格式字串裡少寫了一個 `%`，所以有值沒被印出來。"
+where = "第 {line} 行。"
+why = "格式字串裡的每個 `%` 會依序對應到一個值。多出來的值會被忽略，不會出現在輸出裡。"
+next_steps = ["對照題目要求的輸出，看看格式字串是不是漏了某個 `%`。"]
+hints = ["數一數 `%` 的數量和逗號後面值的數量，兩者應該一樣多。"]

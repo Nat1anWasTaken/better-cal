@@ -1,0 +1,9 @@
+# Counter-example: GCC says "expected '=', ',', ';', 'asm' ... before ')'",
+# which must not be read as a missing semicolon.
+compile_success = false
+primary = "syntax.fullwidth_char"
+primary_line = 3
+findings = 1
+absent = ["syntax.missing_semicolon", "syntax.unexpected_token"]
+[vars]
+ascii = "("

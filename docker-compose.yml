@@ -1,0 +1,85 @@
+# CYCU-CAL: app (API + web UI + judge queue workers), judge-runner, PostgreSQL.
+# Self-host: copy .env.example to .env, fill the secrets, then `docker compose up -d --build`.
+# Dokploy: deploy this file as a *Docker Compose* app (not a Swarm stack; the runner needs `privileged`).
+
+name: cyculcal
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cyculcal
+      POSTGRES_USER: cyculcal
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cyculcal -d cyculcal"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+
+  runner:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.runner
+    image: cyculcal-runner:${CYCULCAL_VERSION:-local}
+    restart: unless-stopped
+    # isolate needs to create cgroups and namespaces for each sandbox.
+    privileged: true
+    cgroup: private
+    environment:
+      RUNNER_TOKEN: ${RUNNER_TOKEN:?set RUNNER_TOKEN in .env}
+      RUNNER_CONCURRENCY: ${RUNNER_CONCURRENCY:-2}
+      RUNNER_MAX_TIME_MS: "5000"
+      RUNNER_MAX_WALL_TIME_MS: "16000"
+      RUNNER_MAX_MEMORY_KB: "262144"
+      RUNNER_MAX_OUTPUT_KB: "1024"
+    # Hard ceiling for everything running inside the runner (all sandboxes).
+    mem_limit: ${RUNNER_MEM_LIMIT:-1g}
+    memswap_limit: ${RUNNER_MEM_LIMIT:-1g}
+    pids_limit: 512
+    tmpfs:
+      - /var/local/lib/isolate:size=512m,mode=0700
+    # Internal-only network: student programs have no network either way
+    # (isolate gives each sandbox an empty network namespace).
+    networks: [judge]
+
+  app:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.app
+    image: cyculcal-app:${CYCULCAL_VERSION:-local}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      runner:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://cyculcal:${POSTGRES_PASSWORD}@db:5432/cyculcal
+      RUNNER_URL: http://runner:7070
+      RUNNER_TOKEN: ${RUNNER_TOKEN}
+      PUBLIC_ORIGINS: ${PUBLIC_ORIGINS:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      JUDGE_WORKERS: ${RUNNER_CONCURRENCY:-2}
+      STATIC_DIR: /app/web
+      RUST_LOG: ${RUST_LOG:-info,sqlx=warn}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "/app/cyculcal", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [backend, judge]
+
+volumes:
+  db-data:
+
+networks:
+  backend:
+  judge:
+    internal: true

@@ -1,0 +1,37 @@
+# 名稱：未宣告、未知型別、重複宣告。
+
+[rules."ident.undeclared"]
+title = "用到了一個還沒宣告的名稱 `{ident}`"
+what = "第 {line} 行用到了 `{ident}`，但編譯器在這個位置找不到它的宣告。"
+cause = "{?declared_line}你在第 {declared_line} 行有宣告 `{ident}`，但那個宣告在這裡可能「看不到」（它在另一個 {{ }} 區塊裡）。{/declared_line}{!declared_line}{?suggestion}可能是拼字打錯了，程式裡有一個很像的名稱 `{suggestion}`。{/suggestion}{!suggestion}可能是忘記先宣告這個變數，或是名稱拼錯了。{/suggestion}{/declared_line}"
+where = "第 {line} 行的 `{ident}`。"
+why = "C 語言要求變數「先宣告、再使用」。宣告就是寫出型別和名稱，例如 `int count;`，讓編譯器知道這個名字代表什麼。"
+next_steps = [
+  "{?declared_line}看第 {declared_line} 行的宣告在哪一對 {{ }} 裡面，再看第 {line} 行是不是在那對 {{ }} 的外面。{/declared_line}{!declared_line}在使用 `{ident}` 之前，確認有一行宣告它（例如 `int {ident} = 0;`）。{/declared_line}",
+  "{?suggestion}比對 `{ident}` 和 `{suggestion}` 的拼法與大小寫。{/suggestion}{!suggestion}確認拼法和大小寫完全一致：`Count` 和 `count` 是不同的名稱。{/suggestion}",
+]
+hints = [
+  "{?declared_line}變數只在宣告它的那一對 {{ }} 裡面有效。離開那個區塊，它就「不存在」了。{/declared_line}{!declared_line}變數的宣告要寫在第一次使用之前（位置在上面）。{/declared_line}",
+  "{?declared_line}如果迴圈結束後還需要用到這個變數，可以把宣告移到迴圈的前面（外面）。{/declared_line}{!declared_line}如果這個變數要用來累加（例如總和），記得宣告時給它一個起始值。{/declared_line}",
+]
+
+[rules."ident.unknown_type"]
+title = "編譯器不認得型別 `{type_name}`"
+what = "第 {line} 行用 `{type_name}` 當作型別來宣告變數，但 C 語言裡沒有這個型別。"
+cause = "{?is_string}C 語言沒有內建的 `string` 型別，這是其他程式語言（例如 C++、Java）的寫法。{/is_string}{?is_bool}在 C17 裡，`bool` 需要先 `#include <stdbool.h>` 才能使用。{/is_bool}{!is_string}{!is_bool}可能是型別名稱拼錯了，或是想用其他程式語言的型別。{/is_bool}{/is_string}"
+where = "第 {line} 行。"
+why = "宣告變數時，名稱前面必須是編譯器認得的型別，例如 `int`、`double`、`char`。"
+next_steps = [
+  "{?is_string}想存一段文字時，C 語言使用字元陣列，例如 `char name[20];`。{/is_string}{?is_bool}在程式最上面加上需要的 `#include`，或改用 `int`（0 代表假，1 代表真）。{/is_bool}{!is_string}{!is_bool}檢查型別名稱的拼法，例如 `int`、`double`、`char`。{/is_bool}{/is_string}",
+]
+hints = [
+  "常用的型別：整數用 `int`，有小數點的數用 `double`，單一字元用 `char`。",
+]
+
+[rules."ident.redefinition"]
+title = "同一個名稱 `{ident}` 宣告了兩次"
+what = "第 {line} 行又宣告了一次 `{ident}`，但它在同一個區塊裡已經宣告過了。"
+where = "第 {line} 行{?previous_line}，以及第一次宣告它的第 {previous_line} 行{/previous_line}。"
+why = "在同一對 {{ }} 裡，一個名稱只能宣告一次。宣告是「建立」變數；之後要改變它的值，只需要寫 `{ident} = ...;`，前面不用再加型別。"
+next_steps = ["如果你是想改變 `{ident}` 的值，把第 {line} 行最前面的型別拿掉。", "如果你需要兩個不同的變數，替其中一個取一個新名字。"]
+hints = ["範例（跟你的程式無關）：\n```c\nint total = 0;   // 宣告（只寫一次）\ntotal = 10;      // 之後改值，不用再寫 int\n```"]

@@ -1,0 +1,4 @@
+compile_success = true
+primary = "warn.chained_comparison"
+findings = 1
+absent = ["fallback.warning"]

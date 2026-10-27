@@ -1,0 +1,46 @@
+[workspace]
+resolver = "3"
+members = ["crates/judge-proto", "crates/diagnostics", "crates/core", "crates/runner", "crates/api"]
+
+[workspace.package]
+edition = "2024"
+version = "0.1.0"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[workspace.dependencies]
+judge-proto = { path = "crates/judge-proto" }
+diagnostics = { path = "crates/diagnostics" }
+ccal-core = { path = "crates/core" }
+
+anyhow = "1"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "process", "fs", "time", "signal", "sync"] }
+axum = { version = "0.8", features = ["macros"] }
+tower = "0.5"
+tower-http = { version = "0.7", features = ["fs", "trace", "limit", "timeout", "set-header"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+regex = "1"
+toml = "1"
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+
+[profile.dev]
+debug = "line-tables-only"
+incremental = true
+
+[profile.dev.package."*"]
+opt-level = 1
+debug = false
+
+[profile.test]
+debug = "line-tables-only"
+
+[profile.release]
+codegen-units = 4
+lto = "thin"
+debug = false
+strip = true

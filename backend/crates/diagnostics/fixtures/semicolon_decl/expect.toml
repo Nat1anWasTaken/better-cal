@@ -1,0 +1,8 @@
+compile_success = false
+primary = "syntax.missing_semicolon"
+primary_line = 5
+cascade = ["warn.unused_variable"]
+absent = ["fallback.compile_error", "syntax.unexpected_token"]
+[vars]
+prev_line = "4"
+token = "printf"
