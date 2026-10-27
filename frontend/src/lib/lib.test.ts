@@ -7,6 +7,7 @@ import { groupCards } from './cards'
 import { diffSummary, renderDiffLine, showWhitespace } from './diff'
 import { errorsByPointer, errorsUnder } from './errors'
 import { applyEdit, buildDoc, changeAllowed, extractBlanks, fixedRanges } from './fillin'
+import { DEFAULT_PREFERENCES, editorOptions, monacoTheme } from './preferences'
 
 describe('diff rendering', () => {
   it('labels missing and extra lines with markers, not only colour', () => {
@@ -156,5 +157,23 @@ describe('template preview', async () => {
   const { templatePreview } = await import('./format')
   it('strips conditionals and marks variables', () => {
     expect(templatePreview('{?keyword}`{keyword}` 後面{/keyword}{!keyword}這裡{/keyword}')).toBe('‹keyword› 後面這裡')
+  })
+})
+
+describe('preferences', () => {
+  it('maps editor themes, following the site theme for auto', () => {
+    expect(monacoTheme('auto', true)).toBe('vs-dark')
+    expect(monacoTheme('auto', false)).toBe('vs')
+    expect(monacoTheme('light', true)).toBe('vs')
+    expect(monacoTheme('hc_dark', false)).toBe('hc-black')
+    expect(monacoTheme('hc_light', true)).toBe('hc-light')
+  })
+  it('turns preferences into Monaco options', () => {
+    expect(editorOptions({ ...DEFAULT_PREFERENCES, font_size: 18, word_wrap: true, line_numbers: 'relative', minimap: true })).toEqual({
+      fontSize: 18,
+      wordWrap: 'on',
+      lineNumbers: 'relative',
+      minimap: { enabled: true },
+    })
   })
 })
