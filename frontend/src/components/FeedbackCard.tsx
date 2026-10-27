@@ -45,7 +45,8 @@ function ConfidenceBadge({ card }: { card: Card }) {
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid gap-1 @xl:grid-cols-label @xl:gap-3">
-      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
+      {/* Match the dd's first line box (16px × leading-relaxed = 26px) so label and text share a centerline. */}
+      <dt className="text-sm font-medium text-muted-foreground @xl:leading-6.5">{label}</dt>
       <dd className="text-base leading-relaxed">{children}</dd>
     </div>
   )
