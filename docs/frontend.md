@@ -31,7 +31,7 @@ src/
                 autosave (draft state machine), errors (JSON Pointer mapping), cards (grouping), format
   hooks/        auth context, useDraft (autosave + localStorage backup + 409 conflicts),
                 useSubmission (polling with backoff, 90 s give-up), useSite (30 s poll), useUnsavedGuard
-  components/   CodeEditor (CodeMirror 6), FeedbackCard / CardList, SubmissionResult, TestResults,
+  components/   CodeEditor (Monaco), FeedbackCard / CardList, SubmissionResult, TestResults,
                 Markdown (react-markdown + rehype-sanitize, raw HTML skipped), StatusPill, AppShell
   components/admin/  form helpers, PolicyEditor, PreviewPanel, StringList
   pages/        Login, Account (incl. forced password change), Home, SetPage, ProblemPage,
@@ -44,7 +44,7 @@ e2e/            Playwright: auth setup (one login per role), student flow, fill-
 ```
 
 The admin dashboard, the problem workspace and the history pages are lazy-loaded chunks, so the login
-and set pages do not download CodeMirror.
+and set pages do not download Monaco.
 
 ## Design decisions
 
@@ -62,13 +62,13 @@ and set pages do not download CodeMirror.
   - The primary card is labelled 「建議先處理這一個」.
   - Knock-on errors and warnings sit in collapsed groups.
 - **Workspace.**
-  - On desktop: three resizable panes (statement | editor | results).
+  - On desktop: the statement on the left; the editor above the results on the right (both splits resizable), like the original cycu-cal.
   - Below 1024 px: tabs (題目 / 程式 / 結果). The editor tab stays mounted and the document survives layout switches.
   - Ctrl+Enter runs and Ctrl+Shift+Enter submits.
   - "Jump to location" scrolls to the reported line, highlights it and focuses the editor.
 - **Fill-in problems.**
   - Template segments become editable ranges.
-  - A CodeMirror transaction filter rejects edits outside the blanks, and the fixed text is greyed out.
+  - Edits outside the blanks are undone as soon as Monaco applies them, and the fixed text is dimmed.
   - The client sends only `{blanks}`. The server assembles the program from its own template, so this
     front-end restriction is a convenience, not the security boundary.
 - **Autosave.**

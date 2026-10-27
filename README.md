@@ -8,7 +8,7 @@ CYCU-CAL 程式讀書會使用的 C 語言練習平台，對象是完全沒有�
 | 部分 | 技術 |
 |---|---|
 | 後端 | Rust（axum、sqlx、PostgreSQL 17） |
-| 前端 | React 19、Vite、TypeScript、Tailwind CSS v4、shadcn/ui、CodeMirror 6 |
+| 前端 | React 19、Vite、TypeScript、Tailwind CSS v4、shadcn/ui、Monaco Editor |
 | 評測 | 自建 judge-runner：**GCC 12.2（C17）+ ioi/isolate 2.7**（cgroup v2）。詳見 [docs/toolchain.md](docs/toolchain.md)，其中說明為什麼不用 Judge0 |
 
 ## 快速開始（自架）
