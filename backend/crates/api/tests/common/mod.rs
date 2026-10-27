@@ -102,6 +102,28 @@ impl TestApp {
         c
     }
 
+    /// Insert an already-judged `kind` submission `minutes` after the open
+    /// round started, without going through the runner.
+    pub async fn seed_submission(&self, username: &str, problem_id: &str, kind: &str, verdict: &str, minutes: i32) -> uuid::Uuid {
+        let id = uuid::Uuid::now_v7();
+        let r = sqlx::query(
+            "INSERT INTO submissions (id, user_id, problem_id, revision_id, kind, code, assembled_source, status, verdict, created_at, finished_at)
+             SELECT $1, u.id, p.id, p.published_revision_id, $3, '', '', 'done', $4, r.started_at + make_interval(mins => $5), r.started_at + make_interval(mins => $5)
+             FROM users u, problems p, rounds r WHERE u.username = $2 AND p.id = $6::uuid AND r.ended_at IS NULL",
+        )
+        .bind(id)
+        .bind(username)
+        .bind(kind)
+        .bind(verdict)
+        .bind(minutes)
+        .bind(problem_id)
+        .execute(&self.state.db)
+        .await
+        .unwrap();
+        assert_eq!(r.rows_affected(), 1, "seed needs an open round, user {username} and problem {problem_id}");
+        id
+    }
+
     pub async fn owner(&self) -> Client<'_> {
         self.create_user("owner", "owner", "ownerpass123").await;
         self.login("owner", "ownerpass123").await
