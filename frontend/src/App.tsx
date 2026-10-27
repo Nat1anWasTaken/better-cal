@@ -11,7 +11,7 @@ import { MyProgressPage } from '@/pages/MyProgress'
 import { SetPage } from '@/pages/SetPage'
 
 const AdminApp = lazy(() => import('@/pages/admin/AdminApp'))
-// The editor (CodeMirror) is only needed on these pages.
+// The editor (Monaco) is only needed on these pages.
 const ProblemPage = lazy(() => import('@/pages/ProblemPage').then((m) => ({ default: m.ProblemPage })))
 const MySubmissionsPage = lazy(() => import('@/pages/MySubmissions').then((m) => ({ default: m.MySubmissionsPage })))
 const SubmissionDetailPage = lazy(() => import('@/pages/MySubmissions').then((m) => ({ default: m.SubmissionDetailPage })))

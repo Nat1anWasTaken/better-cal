@@ -11,13 +11,14 @@ export async function login(page: Page, who: { username: string; password: strin
   await expect(page).not.toHaveURL(/\/login/)
 }
 
-/** Replaces the whole CodeMirror document. */
+/** Replaces the whole Monaco document. Pastes rather than types, as typing
+ * multi-line text would trigger Monaco's auto-indent on every new line. */
 export async function setCode(page: Page, code: string) {
-  const editor = page.locator('.cm-content').first()
-  await editor.click()
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.evaluate((text) => navigator.clipboard.writeText(text), code)
+  await page.locator('.monaco-editor .view-lines').first().click()
   await page.keyboard.press('Control+a')
-  await page.keyboard.press('Delete')
-  await page.keyboard.insertText(code)
+  await page.keyboard.press('Control+v')
 }
 
 export async function waitForResult(page: Page) {

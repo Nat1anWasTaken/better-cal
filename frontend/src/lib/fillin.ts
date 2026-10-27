@@ -37,7 +37,7 @@ export function changeAllowed(from: number, to: number, ranges: BlankRange[]): b
 }
 
 /** Shifts ranges after an edit of `[from, to)` replaced by `insertLen` chars
- * inside one blank. Pure counterpart of CodeMirror's position mapping. */
+ * inside one blank. Applied to Monaco's content changes. */
 export function applyEdit(ranges: BlankRange[], from: number, to: number, insertLen: number): BlankRange[] {
   const delta = insertLen - (to - from)
   return ranges.map((r) => {

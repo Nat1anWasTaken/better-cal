@@ -38,8 +38,8 @@ test('student: run broken code, read the card, reveal a hint, jump, fix and pass
 
   // Jump to the reported location (GCC points at the end of the scanf line).
   await primary.getByTestId('jump-button').click()
-  await expect(page.locator('.cm-jump-line')).toBeVisible()
-  await expect(page.locator('.cm-jump-line')).toContainText('scanf')
+  await expect(page.locator('.monaco-editor .selected-text').first()).toBeVisible()
+  await expect(page.locator('.monaco-editor .active-line-number')).toHaveText('5')
 
   // Original compiler message is available but collapsed.
   await primary.getByText('原始訊息（給進階學習者）').click()
@@ -57,7 +57,7 @@ test('student: fill-in problem keeps fixed code read-only and passes with blanks
   await page.goto('/?all=1')
   await page.getByRole('link', { name: /第 2 週/ }).click()
   await page.getByRole('link', { name: /補寫函式/ }).click()
-  const editor = page.locator('.cm-content')
+  const editor = page.locator('.monaco-editor .view-lines')
   await expect(editor).toContainText('int max(int a, int b)')
   // Start from the template (a previous run may have left a draft).
   await page.getByRole('button', { name: '恢復起始程式' }).click()
@@ -65,13 +65,13 @@ test('student: fill-in problem keeps fixed code read-only and passes with blanks
   await expect(editor).toContainText('return 0;')
 
   // Typing inside fixed code is rejected.
-  await page.locator('.cm-line', { hasText: 'int main(void)' }).click()
+  await page.locator('.monaco-editor .view-line', { hasText: 'int main(void)' }).click()
   await page.keyboard.press('End')
   await page.keyboard.type('XYZ')
   await expect(editor).not.toContainText('XYZ')
 
   // Replace the blank's content (line "return 0;" inside max).
-  const blankLine = page.locator('.cm-line', { hasText: 'return 0;' }).first()
+  const blankLine = page.locator('.monaco-editor .view-line', { hasText: 'return 0;' }).first()
   await blankLine.click()
   await page.keyboard.press('End')
   await page.keyboard.press('Shift+Home')

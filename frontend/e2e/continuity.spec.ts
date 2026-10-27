@@ -10,7 +10,7 @@ test('draft is autosaved and restored after reload', async ({ page }) => {
   await setCode(page, `${marker}\n#include <stdio.h>\nint main(void) { return 0; }\n`)
   await expect(page.getByText(/^已儲存/)).toBeVisible({ timeout: 10_000 })
   await page.reload()
-  await expect(page.locator('.cm-content')).toContainText(marker)
+  await expect(page.locator('.monaco-editor .view-lines')).toContainText(marker)
 })
 
 test('switching the active set shows a banner and keeps the code', async ({ page, browser }) => {
@@ -35,7 +35,7 @@ test('switching the active set shows a banner and keeps the code', async ({ page
     // Site info is polled every 30 s.
     await expect(page.getByTestId('active-set-banner')).toBeVisible({ timeout: 45_000 })
     await expect(page.getByTestId('active-set-banner')).toContainText('你的程式碼已保留')
-    await expect(page.locator('.cm-content')).toContainText(marker)
+    await expect(page.locator('.monaco-editor .view-lines')).toContainText(marker)
   } finally {
     const prev = sets.find((s) => s.id === before)
     if (prev) await api.put('/api/v1/admin/site/active-problem-set', { data: { problem_set: prev.slug }, headers })

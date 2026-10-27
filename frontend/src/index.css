@@ -184,33 +184,13 @@
   }
 }
 
-/* CodeMirror: fill-in fixed regions and diagnostics highlight. */
-.cm-editor {
-  height: 100%;
-  font-size: 14px;
-  background: var(--code);
+/* Monaco fill-in problems: the editable blanks and the fixed code around them. */
+.fillin-blank {
+  text-decoration: underline dashed var(--primary);
+  text-underline-offset: 3px;
 }
-.cm-editor .cm-scroller {
-  font-family: var(--font-mono);
-  line-height: 1.6;
-}
-.cm-editor .cm-gutters {
-  background: var(--muted);
-  color: var(--muted-foreground);
-  border-right: 1px solid var(--border);
-}
-.cm-locked {
-  background: var(--locked);
-  color: var(--muted-foreground);
-}
-.cm-blank {
-  background: var(--primary-soft);
-  border-bottom: 1px dashed var(--primary);
-}
-.cm-jump-line {
-  background: var(--warning-soft);
-  outline: 2px solid var(--warning);
-  outline-offset: -2px;
+.fillin-locked {
+  opacity: 0.6;
 }
 
 /* Markdown content (problem statements, card text). No typography plugin: a small, deliberate set. */
