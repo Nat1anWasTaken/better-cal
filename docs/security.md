@@ -29,7 +29,7 @@
 
 ## 身分驗證
 
-- 密碼使用 RustCrypto `argon2` 0.5 的 Argon2id 預設參數，最少 8 個字元。帳號不存在時也會執行一次雜湊比對，避免從回應時間判斷帳號是否存在。登入有頻率限制。
+- 密碼使用 RustCrypto `argon2` 0.5 的 Argon2id 預設參數，最少 8 個字元。帳號不存在時也會執行一次雜湊比對，避免從回應時間判斷帳號是否存在。登入有頻率限制：每個 IP＋帳號、每個帳號（不論 IP）、每個 IP 各自計算。IP 只取反向代理寫入的值（`CLIENT_IP_HEADER` 或 `X-Forwarded-For` 最後一段），客戶端自帶的 `X-Forwarded-For` 前段不會被採用。
 - Session：
   - 256-bit 隨機 token，放在 `HttpOnly; SameSite=Lax` cookie，可設定 `Secure`。資料庫只存 SHA-256。
   - 有效期會在使用時延長（預設 14 天）。

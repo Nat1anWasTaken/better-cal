@@ -141,6 +141,7 @@ BUILDX_BUILDER=ccal-capped docker compose up -d --build --wait
 | `STATIC_DIR` | 前端靜態檔目錄 | （容器內為 `/app/web`） |
 | `PUBLIC_ORIGINS` | 允許的瀏覽器 Origin（逗號分隔） | 空 |
 | `PUBLIC_URL` | 網站對外網址；MCP 的 OAuth issuer，`{PUBLIC_URL}/mcp` 為 MCP 伺服器 | 空（MCP 無法啟用） |
+| `CLIENT_IP_HEADER` | 反向代理放真實客戶端 IP 的標頭，用於頻率限制；放在 Cloudflare 後面時設為 `cf-connecting-ip`，此時來源主機只能讓 Cloudflare 連入，否則標頭可被偽造 | 空（使用 `X-Forwarded-For` 最後一段） |
 | `COOKIE_SECURE` | cookie 加上 Secure | `false` |
 | `SESSION_TTL_HOURS` | session 閒置期限 | 336（14 天） |
 | `JUDGE_WORKERS` | 評測 worker 數 | 2 |
