@@ -557,6 +557,30 @@ async fn auth_flows_password_change_and_session_revocation() {
 }
 
 #[tokio::test]
+async fn login_limits_ignore_spoofed_forwarded_for() {
+    let app = app().await;
+    let _owner = app.owner().await;
+    let _s = app.student("s1").await;
+    let mut x = app.anon();
+    // A fresh client-supplied first hop on every attempt must not reset the limits.
+    let mut statuses = Vec::new();
+    for i in 0..12 {
+        let xff = format!("10.0.0.{i}, 203.0.113.7");
+        let r = x.req_h("POST", "/api/v1/auth/login", Some(json!({"username": "s1", "password": "nope-nope"})), &[("x-forwarded-for", &xff)]).await;
+        statuses.push(r.status);
+    }
+    assert_eq!(statuses[9], StatusCode::UNAUTHORIZED);
+    assert_eq!(statuses[10], StatusCode::TOO_MANY_REQUESTS);
+    // Spreading guesses over many real addresses still hits the per-account limit.
+    for i in 0..30 {
+        let xff = format!("198.51.100.{i}");
+        x.req_h("POST", "/api/v1/auth/login", Some(json!({"username": "s1", "password": "nope-nope"})), &[("x-forwarded-for", &xff)]).await;
+    }
+    let r = x.req_h("POST", "/api/v1/auth/login", Some(json!({"username": "s1", "password": "studentpass1"})), &[("x-forwarded-for", "198.51.100.200")]).await;
+    assert_eq!(r.status, StatusCode::TOO_MANY_REQUESTS);
+}
+
+#[tokio::test]
 async fn preferences_round_trip_and_validation() {
     let app = app().await;
     let mut owner = app.owner().await;
